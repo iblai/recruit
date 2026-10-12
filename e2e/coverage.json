@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "checkpoints": [
+    {
+      "id": "A1",
+      "journey": "auth",
+      "name": "authenticated user lands on their organization's home",
+      "spec": "journeys/auth.journey.spec.ts"
+    },
+    {
+      "id": "A2",
+      "journey": "auth",
+      "name": "auth tokens and the organization list are stored",
+      "spec": "journeys/auth.journey.spec.ts"
+    },
+    {
+      "id": "A3",
+      "journey": "auth",
+      "name": "URL organization matches the session organization",
+      "spec": "journeys/auth.journey.spec.ts"
+    },
+    {
+      "id": "S1",
+      "journey": "shell",
+      "name": "sidebar reaches every workspace object",
+      "spec": "journeys/shell.journey.spec.ts"
+    },
+    {
+      "id": "S2",
+      "journey": "shell",
+      "name": "⌘K opens the command palette",
+      "spec": "journeys/shell.journey.spec.ts"
+    },
+    {
+      "id": "S3",
+      "journey": "shell",
+      "name": "organization switcher lists the session's organizations",
+      "spec": "journeys/shell.journey.spec.ts"
+    },
+    {
+      "id": "S4",
+      "journey": "shell",
+      "name": "Settings hidden outside Admin mode; /settings redirects home",
+      "spec": "journeys/shell.journey.spec.ts"
+    },
+    {
+      "id": "C1",
+      "journey": "recruit",
+      "name": "create a prospect and open its page",
+      "spec": "journeys/recruit.journey.spec.ts"
+    },
+    {
+      "id": "C2",
+      "journey": "recruit",
+      "name": "create a school and see it in the list",
+      "spec": "journeys/recruit.journey.spec.ts"
+    },
+    {
+      "id": "C3",
+      "journey": "recruit",
+      "name": "open an application, see it on the board, mark it enrolled",
+      "spec": "journeys/recruit.journey.spec.ts"
+    },
+    {
+      "id": "C4",
+      "journey": "recruit",
+      "name": "log an activity on a prospect",
+      "spec": "journeys/recruit.journey.spec.ts"
+    },
+    {
+      "id": "C5",
+      "journey": "recruit",
+      "name": "create and delete a tag",
+      "spec": "journeys/recruit.journey.spec.ts"
+    }
+  ]
+}

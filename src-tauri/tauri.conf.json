@@ -1,0 +1,76 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ibl.ai Recruit",
+  "identifier": "ai.ibl.recruit",
+  "version": "0.1.0",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devUrl": "https://recruit.ibl.ai",
+    "frontendDist": "https://recruit.ibl.ai"
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app", "nsis", "msi", "deb", "appimage"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "IBL.ai",
+    "homepage": "https://ibl.ai",
+    "copyright": "© 2026 ibl.ai",
+    "category": "Business",
+    "shortDescription": "The open-source recruitment CRM for universities on the ibl.ai platform",
+    "longDescription": "ibl.ai/recruit — a Chief of Staff agent, prospects, schools, applications, activities and landing pages for every organization you belong to on the ibl.ai platform. One codebase on web, macOS, Windows, Linux, iOS and Android.",
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.mac.plist",
+      "exceptionDomain": null
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.digicert.com",
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "iOS": {
+      "developmentTeam": "L4FWRM8W5Z",
+      "minimumSystemVersion": "15.0"
+    },
+    "android": {
+      "minSdkVersion": 24
+    }
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [],
+    "security": {
+      "csp": null,
+      "capabilities": ["default"]
+    }
+  },
+  "plugins": {
+    "opener": {
+      "requireLiteralLeadingDot": false
+    },
+    "deep-link": {
+      "mobile": [
+        { "host": "recruit.ibl.ai", "pathPrefix": ["/"] },
+        { "host": "login.iblai.app", "pathPrefix": ["/"] },
+        { "scheme": ["iblai-recruit", "ai.ibl.recruit"] }
+      ],
+      "desktop": {
+        "schemes": ["iblai-recruit", "ai.ibl.recruit"]
+      }
+    }
+  }
+}
