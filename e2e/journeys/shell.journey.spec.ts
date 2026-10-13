@@ -47,19 +47,12 @@ test.describe("shell journey", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("S3 · the organization switcher lists the session's organizations", async ({ page }) => {
+  test("S3 · the OS footer cluster is present in the sidebar", async ({ page }) => {
     await gotoHome(page);
-    const count = await page.evaluate(
-      () => JSON.parse(localStorage.getItem("tenants") ?? "[]").length,
-    );
-    await page.getByRole("button", { name: /switch organization/i }).click();
-    await expect(page.getByText("Organizations", { exact: true }).first()).toBeVisible({
+    await expect(page.getByRole("link", { name: /support/i }).first()).toBeVisible({
       timeout: 10_000,
     });
-    if (count > 1) {
-      await expect(page.getByRole("menuitem").filter({ hasText: /./ }).nth(1)).toBeVisible();
-    }
-    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: /notifications/i }).first()).toBeVisible();
   });
 
   test("S4 · a member (or an admin in User mode) never sees Settings", async ({ page }) => {

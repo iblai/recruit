@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@iblai/iblai-js/web-containers/next";
 import { AppSidebar } from "@/components/crm/app-sidebar";
 import { TopBar } from "@/components/crm/top-bar";
 import { BreadcrumbProvider } from "@/components/crm/breadcrumbs";

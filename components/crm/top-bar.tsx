@@ -6,7 +6,7 @@ import { Menu, PanelLeft, Sparkles } from "lucide-react";
 import { NotificationDropdown } from "@iblai/iblai-js/web-containers";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useSidebar } from "@/components/ui/sidebar";
+import { useSidebar } from "@iblai/iblai-js/web-containers/next";
 import { UserMenu } from "@/components/crm/user-menu";
 import { AdminModeSwitch } from "@/components/crm/admin-mode-switch";
 import { Breadcrumbs } from "@/components/crm/breadcrumbs";

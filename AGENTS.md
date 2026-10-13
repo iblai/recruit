@@ -59,7 +59,7 @@ appears in dialogs, record pages, tools and the landing-page mapping.
 
 1. **Organization from the URL.** Never hard-code a tenant. `useSession().tenantKey`;
    links via `useSession().href(path)`.
-2. **SDK components first** (`@iblai/iblai-js`: `Chat`, profile dropdown,
+2. **SDK components first** (`@iblai/iblai-js`: `PlatformSidebar` + `SidebarProvider`/`SidebarInset`/`useSidebar` from `/web-containers/next` for the shell, `Chat`, profile dropdown,
    notifications, Account / Management, invitations, tenant switching), then
    shadcn/ui (`components/ui`, Base UI — `render` prop, not `asChild`;
    `DropdownMenuLabel` inside a `DropdownMenuGroup`; `CommandDialog` needs its
