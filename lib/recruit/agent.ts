@@ -10,7 +10,7 @@
  * Server-only (uses the org's Platform API Token). Relative imports on
  * purpose: vitest and the CLI resolve no `@/` alias.
  */
-import { platformFetch, PlatformError } from "../iblai/platform";
+import { platformFetch as rawPlatformFetch, PlatformError } from "../iblai/platform";
 import { mergeRecruitSettings, readRecruitSettings, type RecruitSettings } from "./org-settings";
 import { RECRUIT_TOOLS } from "../mcp/tools";
 
@@ -60,12 +60,20 @@ export interface SetupInput {
   /** Shared secret the platform presents to /api/mcp/<org>. */
   mcpToken: string;
   institutionName?: string;
+  /**
+   * Act as a signed-in org admin (`Authorization: Token …`) instead of the
+   * server's Platform API Token — lets an admin create the agent before the
+   * server holds a key. The tool server itself still needs the key at runtime.
+   */
+  sessionToken?: string;
   log?: (line: string) => void;
 }
 
 export interface SetupResult {
   agentId: string;
-  mcpServerId: number;
+  /** `null` when tools were not wired (no https app URL or no MCP secret yet). */
+  mcpServerId: number | null;
+  toolsWired: boolean;
   created: { agent: boolean; mcpServer: boolean; connection: boolean };
 }
 
@@ -91,8 +99,11 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
   const { org, username, log = () => {} } = input;
   const appUrl = input.appUrl.replace(/\/+$/, "");
   if (!/^https?:\/\//.test(appUrl)) throw new Error("appUrl must be an absolute http(s) origin");
-  if (!input.mcpToken || input.mcpToken.length < 16)
-    throw new Error("RECRUIT_MCP_TOKEN must be set to a random secret of at least 16 characters");
+  const canWireTools =
+    /^https:\/\//.test(appUrl) && !!input.mcpToken && input.mcpToken.length >= 16;
+  const auth = input.sessionToken ? { Authorization: `Token ${input.sessionToken}` } : undefined;
+  const platformFetch = <T>(path: string, init: Parameters<typeof rawPlatformFetch>[1] = {}) =>
+    rawPlatformFetch<T>(path, { ...init, headers: { ...(auth ?? {}), ...(init.headers ?? {}) } });
   const mentorBase = `/dm/api/ai-mentor/orgs/${enc(org)}/users/${enc(username)}`;
   const metaPath = `/dm/api/core/orgs/${enc(org)}/metadata/`;
 
@@ -147,102 +158,111 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
     body: { description: AGENT_DESCRIPTION },
   }).catch(() => undefined);
 
-  // 3. The MCP server record that points back at this app.
-  const serverUrl = `${appUrl}/api/mcp/${enc(org)}`;
-  type McpServerRow = { id: number; url?: string; name?: string };
-  const existing = await platformFetch<{ results?: McpServerRow[] } | McpServerRow[]>(
-    `${mentorBase}/mcp-servers/?page_size=100&search=${enc("ibl.ai/recruit")}`,
-    { org },
-  );
-  const rows = Array.isArray(existing) ? existing : (existing?.results ?? []);
-  let server =
-    rows.find((r) => r.url === serverUrl) ??
-    (settings.mcpServerId ? rows.find((r) => r.id === settings.mcpServerId) : undefined);
-  if (server && server.url !== serverUrl) {
-    await platformFetch(`${mentorBase}/mcp-servers/${server.id}/`, {
-      org,
-      method: "PATCH",
-      body: { url: serverUrl },
-    });
-    log(`Updated MCP server ${server.id} URL → ${serverUrl}.`);
-  }
-  if (!server) {
-    server = await platformFetch<McpServerRow>(`${mentorBase}/mcp-servers/`, {
-      org,
-      method: "POST",
-      body: {
-        name: "ibl.ai/recruit tools",
-        description:
-          "Prospects, schools, applications, activities, tags and landing pages of the recruitment CRM.",
-        url: serverUrl,
-        transport: "streamable_http",
-        auth_type: "token",
-        auth_scope: "platform",
-        is_enabled: true,
-        is_featured: false,
-        clean_output: false,
-      },
-    });
-    created.mcpServer = true;
-    log(`Registered MCP server ${server.id} at ${serverUrl}.`);
-  }
-
-  // 4. The platform-scoped connection carrying the shared secret.
-  type ConnRow = { id: number; server?: number | { id: number }; scope?: string };
-  const conns = await platformFetch<{ results?: ConnRow[] } | ConnRow[]>(
-    `${mentorBase}/mcp-server-connections/?page_size=100`,
-    { org },
-  );
-  const connRows = Array.isArray(conns) ? conns : (conns?.results ?? []);
-  const serverId = server.id;
-  const conn = connRows.find(
-    (c) =>
-      (typeof c.server === "object" ? c.server?.id : c.server) === serverId &&
-      (c.scope ?? "platform") === "platform",
-  );
-  if (conn) {
-    // Rotate the secret so the platform always holds the current token.
-    await platformFetch(`${mentorBase}/mcp-server-connections/${conn.id}/`, {
-      org,
-      method: "PATCH",
-      body: { credentials: input.mcpToken, authorization_scheme: "Bearer", is_active: true },
-    });
-    log(`Refreshed connection ${conn.id}.`);
+  // 3–5. The tool server — only once the platform can actually reach it.
+  let serverId: number | null = null;
+  if (!canWireTools) {
+    log(
+      /^https:\/\//.test(appUrl)
+        ? "Tools not wired: RECRUIT_MCP_TOKEN is not set (≥ 16 chars). Re-run setup after setting it."
+        : `Tools not wired: ${appUrl} is not an https origin the platform can call. Set NEXT_PUBLIC_APP_URL and re-run setup.`,
+    );
   } else {
-    await platformFetch(`${mentorBase}/mcp-server-connections/`, {
-      org,
-      method: "POST",
-      body: {
-        server: serverId,
-        scope: "platform",
-        auth_type: "token",
-        credentials: input.mcpToken,
-        authorization_scheme: "Bearer",
-      },
-    });
-    created.connection = true;
-    log("Created the platform-scoped connection.");
-  }
+    const serverUrl = `${appUrl}/api/mcp/${enc(org)}`;
+    type McpServerRow = { id: number; url?: string; name?: string };
+    const existing = await platformFetch<{ results?: McpServerRow[] } | McpServerRow[]>(
+      `${mentorBase}/mcp-servers/?page_size=100&search=${enc("ibl.ai/recruit")}`,
+      { org },
+    );
+    const rows = Array.isArray(existing) ? existing : (existing?.results ?? []);
+    let server =
+      rows.find((r) => r.url === serverUrl) ??
+      (settings.mcpServerId ? rows.find((r) => r.id === settings.mcpServerId) : undefined);
+    if (server && server.url !== serverUrl) {
+      await platformFetch(`${mentorBase}/mcp-servers/${server.id}/`, {
+        org,
+        method: "PATCH",
+        body: { url: serverUrl },
+      });
+      log(`Updated MCP server ${server.id} URL → ${serverUrl}.`);
+    }
+    if (!server) {
+      server = await platformFetch<McpServerRow>(`${mentorBase}/mcp-servers/`, {
+        org,
+        method: "POST",
+        body: {
+          name: "ibl.ai/recruit tools",
+          description:
+            "Prospects, schools, applications, activities, tags and landing pages of the recruitment CRM.",
+          url: serverUrl,
+          transport: "streamable_http",
+          auth_type: "token",
+          auth_scope: "platform",
+          is_enabled: true,
+          is_featured: false,
+          clean_output: false,
+        },
+      });
+      created.mcpServer = true;
+      log(`Registered MCP server ${server.id} at ${serverUrl}.`);
+    }
 
-  // 5. Wire the server onto the agent — merge, never replace.
-  const current = await platformFetch<MentorSettings>(
-    `${mentorBase}/mentors/${enc(agentId)}/settings/`,
-    { org },
-  );
-  const toolSlugs = new Set<string>(Array.isArray(current.tool_slugs) ? current.tool_slugs : []);
-  toolSlugs.add("mcp-tool");
-  const mcpIds = new Set<number>(
-    (Array.isArray(current.mcp_servers) ? current.mcp_servers : [])
-      .map((s) => (typeof s === "object" ? s.id : s))
-      .filter((n) => Number.isFinite(n)),
-  );
-  mcpIds.add(serverId);
-  await platformFetch(`${mentorBase}/mentors/${enc(agentId)}/settings/`, {
-    org,
-    method: "PUT",
-    body: { tool_slugs: [...toolSlugs], mcp_servers: [...mcpIds], can_use_tools: true },
-  });
-  log(`Agent tools: ${[...toolSlugs].join(", ")}; MCP servers: ${[...mcpIds].join(", ")}.`);
+    // 4. The platform-scoped connection carrying the shared secret.
+    type ConnRow = { id: number; server?: number | { id: number }; scope?: string };
+    const conns = await platformFetch<{ results?: ConnRow[] } | ConnRow[]>(
+      `${mentorBase}/mcp-server-connections/?page_size=100`,
+      { org },
+    );
+    const connRows = Array.isArray(conns) ? conns : (conns?.results ?? []);
+    serverId = server.id;
+    const conn = connRows.find(
+      (c) =>
+        (typeof c.server === "object" ? c.server?.id : c.server) === serverId &&
+        (c.scope ?? "platform") === "platform",
+    );
+    if (conn) {
+      // Rotate the secret so the platform always holds the current token.
+      await platformFetch(`${mentorBase}/mcp-server-connections/${conn.id}/`, {
+        org,
+        method: "PATCH",
+        body: { credentials: input.mcpToken, authorization_scheme: "Bearer", is_active: true },
+      });
+      log(`Refreshed connection ${conn.id}.`);
+    } else {
+      await platformFetch(`${mentorBase}/mcp-server-connections/`, {
+        org,
+        method: "POST",
+        body: {
+          server: serverId,
+          scope: "platform",
+          auth_type: "token",
+          credentials: input.mcpToken,
+          authorization_scheme: "Bearer",
+        },
+      });
+      created.connection = true;
+      log("Created the platform-scoped connection.");
+    }
+
+    // 5. Wire the server onto the agent — merge, never replace.
+    const current = await platformFetch<MentorSettings>(
+      `${mentorBase}/mentors/${enc(agentId)}/settings/`,
+      { org },
+    );
+    const toolSlugs = new Set<string>(Array.isArray(current.tool_slugs) ? current.tool_slugs : []);
+    toolSlugs.add("mcp-tool");
+    const mcpIds = new Set<number>(
+      (Array.isArray(current.mcp_servers) ? current.mcp_servers : [])
+        .map((s) => (typeof s === "object" ? s.id : s))
+        .filter((n) => Number.isFinite(n)),
+    );
+    mcpIds.add(serverId);
+    await platformFetch(`${mentorBase}/mentors/${enc(agentId)}/settings/`, {
+      org,
+      method: "PUT",
+      body: { tool_slugs: [...toolSlugs], mcp_servers: [...mcpIds], can_use_tools: true },
+    });
+    log(`Agent tools: ${[...toolSlugs].join(", ")}; MCP servers: ${[...mcpIds].join(", ")}.`);
+  }
 
   // 6. Suggested prompts (best effort; the list endpoint may already have them).
   try {
@@ -270,12 +290,12 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
   const latest = await platformFetch<{ metadata?: Record<string, unknown> }>(metaPath, { org });
   const merged = mergeRecruitSettings(latest?.metadata ?? {}, {
     agentId,
-    mcpServerId: serverId,
+    ...(serverId !== null && { mcpServerId: serverId }),
     setupCompletedAt: new Date().toISOString(),
     ...(input.institutionName && { institutionName: input.institutionName }),
   });
   await platformFetch(metaPath, { org, method: "PUT", body: { metadata: merged } });
   log("Saved the agent id to the organization's metadata.");
 
-  return { agentId, mcpServerId: serverId, created };
+  return { agentId, mcpServerId: serverId, toolsWired: serverId !== null, created };
 }

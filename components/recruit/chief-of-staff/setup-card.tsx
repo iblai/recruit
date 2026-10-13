@@ -67,7 +67,8 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
     }
   };
 
-  const ready = !!status && status.serverHasKey && status.mcpTokenSet;
+  // Creating the agent only needs a signed-in admin; the key and secret gate the tools.
+  const ready = !!status;
 
   return (
     <div className={compact ? "p-4" : "mx-auto w-full max-w-2xl p-4 md:p-8"}>

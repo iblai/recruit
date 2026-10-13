@@ -61,20 +61,17 @@ export async function POST(req: NextRequest) {
   const body = await jsonBody(req);
   const org = typeof body.org === "string" ? body.org : "";
   if (!org) return NextResponse.json({ error: "Organization is required" }, { status: 400 });
-  if (!apiKeyFor(org)) {
-    return NextResponse.json(
-      {
-        error: `The server holds no Platform API Token for "${org}". Set IBLAI_API_KEY (or an IBLAI_API_KEYS entry) and restart.`,
-      },
-      { status: 503 },
-    );
-  }
+  // With a key, the platform confirms the caller administers the org. Without
+  // one, the setup runs as the caller (their own session token), so the
+  // platform enforces their rights on every call.
+  const serverHasKey = !!apiKeyFor(org);
   let caller;
   try {
-    caller = await requireAdmin(req, org);
+    caller = serverHasKey ? await requireAdmin(req, org) : await verifyCaller(req);
   } catch (e) {
     return platformFailure(e);
   }
+  if (!caller) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   if (isResponse(caller)) return caller;
   const appUrl =
     (typeof body.appUrl === "string" && /^https?:\/\//.test(body.appUrl) ? body.appUrl : "") ||
@@ -84,9 +81,10 @@ export async function POST(req: NextRequest) {
   try {
     const result = await setupChiefOfStaff({
       org,
-      username: config.apiUsername() || caller.username,
+      username: serverHasKey ? config.apiUsername() || caller.username : caller.username,
       appUrl,
       mcpToken: config.mcpToken(),
+      sessionToken: serverHasKey ? undefined : caller.token,
       institutionName:
         typeof body.institutionName === "string"
           ? body.institutionName.trim() || undefined

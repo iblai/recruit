@@ -117,7 +117,8 @@ export function ChiefOfStaffTab() {
     }
   };
 
-  const ready = !!status && status.serverHasKey && status.mcpTokenSet;
+  // Creating the agent only needs a signed-in admin; the key and secret gate the tools.
+  const ready = !!status;
   const osAgentUrl = agentId
     ? `${config.osUrl()}/platform/${encodeURIComponent(tenantKey)}/${encodeURIComponent(agentId)}`
     : "";

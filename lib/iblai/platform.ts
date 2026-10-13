@@ -83,7 +83,10 @@ export async function platformFetch<T = unknown>(
 ): Promise<T> {
   const { body, headers, org, ...rest } = init;
   const key = apiKeyFor(org);
-  if (!key)
+  // A caller may act as a signed-in user instead (`Authorization: Token …`),
+  // e.g. an org admin running agent setup before the server holds a key.
+  const callerAuth = headers?.Authorization;
+  if (!key && !callerAuth)
     throw new PlatformError(
       500,
       null,
@@ -96,7 +99,7 @@ export async function platformFetch<T = unknown>(
     ...rest,
     cache: "no-store",
     headers: {
-      Authorization: `Api-Token ${key}`,
+      Authorization: callerAuth ?? `Api-Token ${key}`,
       Accept: "application/json",
       ...(isJson && { "Content-Type": "application/json" }),
       ...headers,

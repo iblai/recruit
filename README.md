@@ -94,6 +94,68 @@ A submission (`POST /api/public/forms/<org>/<slug>`) is validated against the pu
 
 ---
 
+## Screenshots
+
+Captured from a demo organization ("Northfield University", seeded with `pnpm seed:demo`). Regenerate with `pnpm screenshots`.
+
+<div align="center">
+
+**Home — the Chief of Staff, with today's brief beside it**
+
+<img src="docs/images/home.png" alt="Home: the Chief of Staff conversation with the Today brief" width="900">
+
+**The Chief of Staff follows you to every page as a side panel**
+
+<img src="docs/images/assistant-panel.png" alt="Prospects list with the Chief of Staff side panel open" width="900">
+
+**Funnel dashboard**
+
+<img src="docs/images/funnel.png" alt="Funnel dashboard: tiles, applications by stage, enrolled vs withdrawn, up next" width="900">
+
+**Applications — board and table**
+
+<img src="docs/images/applications-board.png" alt="Applications kanban board by funnel stage" width="900">
+
+<img src="docs/images/applications-table.png" alt="Applications table view" width="900">
+
+**An application: stage stepper, enrolled / withdrawn, recruitment fields, timeline**
+
+<img src="docs/images/application.png" alt="Application record page" width="900">
+
+**Prospects and a prospect record**
+
+<img src="docs/images/prospects.png" alt="Prospects table" width="900">
+
+<img src="docs/images/prospect.png" alt="Prospect record page with recruitment fields and timeline" width="900">
+
+**Schools & partners · Activities**
+
+<img src="docs/images/schools.png" alt="Schools and partners table" width="900">
+
+<img src="docs/images/activities.png" alt="Activities: overdue, today, this week" width="900">
+
+**Landing pages — list, editor with live preview, and the public page**
+
+<img src="docs/images/landing-pages.png" alt="Landing pages list" width="900">
+
+<img src="docs/images/landing-page-editor.png" alt="Landing page editor with live preview" width="900">
+
+<img src="docs/images/landing-page-public.png" alt="Public landing page as a prospect sees it" width="900">
+
+<img src="docs/images/landing-page-mobile.png" alt="Public landing page on a phone" width="320">
+
+**Settings — Chief of Staff, Funnels, Branding**
+
+<img src="docs/images/settings-chief-of-staff.png" alt="Settings: Chief of Staff setup and tools" width="900">
+
+<img src="docs/images/settings-funnels.png" alt="Settings: funnels and stages" width="900">
+
+<img src="docs/images/settings-branding.png" alt="Settings: landing-page branding" width="900">
+
+</div>
+
+---
+
 ## Quick start
 
 ```bash

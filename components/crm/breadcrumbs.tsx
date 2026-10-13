@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { useSession } from "@/hooks/use-session";
-import { shortTenantKey, tenantDisplayName } from "@/lib/iblai/tenant";
+import { isUnnamedTenant, tenantDisplayName } from "@/lib/iblai/tenant";
+import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
 
 export interface Crumb {
   label: ReactNode;
@@ -36,9 +37,11 @@ export function useBreadcrumbs(crumbs: Crumb[]) {
 }
 
 const SECTION_LABELS: Record<string, string> = {
-  people: "People",
-  organizations: "Organizations",
-  deals: "Deals",
+  dashboard: "Funnel",
+  prospects: "Prospects",
+  schools: "Schools",
+  applications: "Applications",
+  "landing-pages": "Pages",
   activities: "Activities",
   tags: "Tags",
   settings: "Settings",
@@ -50,7 +53,14 @@ const SECTION_LABELS: Record<string, string> = {
 export function Breadcrumbs() {
   const { crumbs } = useContext(CrumbContext);
   const pathname = usePathname() ?? "/";
-  const { currentTenant, tenantKey, href } = useSession();
+  const { currentTenant, href } = useSession();
+  const { branding } = useRecruitSettings();
+  // Unnamed (hash-keyed) organizations show the institution name from
+  // Settings → Branding instead of an identifier.
+  const orgLabel =
+    isUnnamedTenant(currentTenant) || !currentTenant
+      ? branding.name
+      : tenantDisplayName(currentTenant);
 
   // Fallback: derive from the URL when a page has not set crumbs.
   const derived: Crumb[] =
@@ -66,10 +76,7 @@ export function Breadcrumbs() {
             href: href(`/${arr.slice(0, i + 1).join("/")}`),
           }));
 
-  const items: Crumb[] = [
-    { label: tenantDisplayName(currentTenant) || shortTenantKey(tenantKey), href: href() },
-    ...derived,
-  ];
+  const items: Crumb[] = [{ label: orgLabel, href: href() }, ...derived];
 
   return (
     <nav aria-label="Breadcrumb" className="flex min-w-0 items-center text-sm">

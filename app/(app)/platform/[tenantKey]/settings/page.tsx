@@ -49,14 +49,12 @@ function SettingsView() {
 
   const tab = useMemo<TabValue>(() => {
     const raw = searchParams.get("tab");
-    return TABS.includes(raw as TabValue) ? (raw as TabValue) : "pipelines";
+    return TABS.includes(raw as TabValue) ? (raw as TabValue) : "agent";
   }, [searchParams]);
 
   const setTab = useCallback(
     (value: TabValue) => {
-      router.replace(
-        value === "pipelines" ? href("/settings") : `${href("/settings")}?tab=${value}`,
-      );
+      router.replace(value === "agent" ? href("/settings") : `${href("/settings")}?tab=${value}`);
     },
     [router, href],
   );

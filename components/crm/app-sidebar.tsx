@@ -35,8 +35,8 @@ import { useAdminMode } from "@/components/crm/admin-mode";
 import { useCommandPalette } from "@/components/crm/command-palette";
 import { useSession } from "@/hooks/use-session";
 import config from "@/lib/iblai/config";
-import { tenantDisplayName } from "@/lib/iblai/tenant";
-import { VOCAB } from "@/lib/recruit/vocabulary";
+import { isUnnamedTenant, tenantDisplayName } from "@/lib/iblai/tenant";
+import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
 import type { IblaiRootState } from "@/store/iblai-store";
 import { cn } from "@/lib/utils";
 
@@ -49,13 +49,13 @@ type NavItem = {
 };
 
 const WORKSPACE: NavItem[] = [
-  { label: VOCAB.chiefOfStaff, path: "", icon: Sparkles, exact: true },
-  { label: VOCAB.funnel.one, path: "/dashboard", icon: ChartColumn },
-  { label: VOCAB.prospect.many, path: "/prospects", icon: Users },
-  { label: VOCAB.school.many, path: "/schools", icon: School },
-  { label: VOCAB.application.many, path: "/applications", icon: ClipboardList },
+  { label: "Home", path: "", icon: Sparkles, exact: true },
+  { label: "Funnel", path: "/dashboard", icon: ChartColumn },
+  { label: "Prospects", path: "/prospects", icon: Users },
+  { label: "Schools", path: "/schools", icon: School },
+  { label: "Applications", path: "/applications", icon: ClipboardList },
   { label: "Activities", path: "/activities", icon: CalendarCheck2 },
-  { label: "Landing pages", path: "/landing-pages", icon: Globe },
+  { label: "Pages", path: "/landing-pages", icon: Globe },
   { label: "Tags", path: "/tags", icon: Tag },
   { label: "Settings", path: "/settings", icon: Settings, adminOnly: true },
 ];
@@ -76,6 +76,11 @@ export function AppSidebar() {
   const { adminMode } = useAdminMode();
   const { open: openPalette } = useCommandPalette();
   const rbacPermissions = useSelector((s: IblaiRootState) => selectRbacPermissions(s));
+  const { branding } = useRecruitSettings();
+  const orgName =
+    !currentTenant || isUnnamedTenant(currentTenant)
+      ? branding.name
+      : tenantDisplayName(currentTenant);
   const [sheet, setSheet] = useState<PlatformAccountTab | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 

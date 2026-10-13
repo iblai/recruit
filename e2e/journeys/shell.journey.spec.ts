@@ -18,10 +18,10 @@ test.describe("shell journey", () => {
     for (const [label, path, heading] of [
       ["Funnel", "dashboard", "Funnel"],
       ["Prospects", "prospects", "Prospects"],
-      ["Schools & partners", "schools", "Schools & partners"],
+      ["Schools", "schools", "Schools & partners"],
       ["Applications", "applications", "Applications"],
       ["Activities", "activities", "Activities"],
-      ["Landing pages", "landing-pages", "Landing pages"],
+      ["Pages", "landing-pages", "Landing pages"],
       ["Tags", "tags", "Tags"],
     ] as const) {
       await page.getByRole("link", { name: label, exact: true }).first().click();
