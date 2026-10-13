@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Initials avatar in a stable brand color for people, organizations and
- * deals. Organizations render as a rounded square (Twenty's convention).
+ * deals. Organizations render as a rounded square (the usual CRM convention).
  */
 export function EntityAvatar({
   name,

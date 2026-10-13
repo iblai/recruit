@@ -46,7 +46,7 @@ const th =
 const td = "px-4 py-2 align-middle";
 
 /**
- * The prospects grid — Twenty's compact table. Name and stage are always
+ * The prospects grid — a compact CRM table. Name and stage are always
  * shown; the rest of the columns are opt-in so the same table serves the
  * Prospects page and a school's Prospects tab. Whole rows are clickable.
  */

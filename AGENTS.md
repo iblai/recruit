@@ -16,8 +16,8 @@ it what it is:
    MCP tool server (`app/api/mcp/[tenantKey]/route.ts` → `lib/mcp/tools.ts`),
    signed with the organization's Platform API Token.
 2. **The CRM** — the platform's `/dm/api/crm/…` resources (persons,
-   organizations, deals, pipelines, activities, tags) in Twenty's information
-   architecture, shown in admissions vocabulary.
+   organizations, deals, pipelines, activities, tags) in a modern CRM's
+   information architecture, shown in admissions vocabulary.
 3. **Landing pages** — public prospect-facing forms at `/p/<org>/<slug>`
    (`app/(public)/…`), defined in the org's metadata, submitted to
    `app/api/public/forms/[tenantKey]/[slug]/route.ts`.

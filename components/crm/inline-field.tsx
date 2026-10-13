@@ -9,7 +9,7 @@ import { SimpleSelect, type SelectOption } from "@/components/crm/simple-select"
 import { InfoTip } from "@/components/crm/info-tip";
 import { cn } from "@/lib/utils";
 
-/** A labelled row in a record's field panel (Twenty's "show page" left column). */
+/** A labelled row in a record's field panel (the record page's left column). */
 export function FieldRow({
   label,
   hint,

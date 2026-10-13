@@ -15,7 +15,7 @@ One agent your whole admissions team talks to. Prospects, schools, applications,
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
 [![Tauri](https://img.shields.io/badge/Tauri-2-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
 
-[Why](#why-iblairecruit) · [The Chief of Staff](#the-chief-of-staff) · [The CRM](#the-crm-twentys-shape-admissions-words) · [Landing pages](#landing-pages) · [Quick start](#quick-start) · [Configuration](#configuration) · [Architecture](#architecture)
+[Why](#why-iblairecruit) · [The Chief of Staff](#the-chief-of-staff) · [The CRM](#the-crm-admissions-words-on-a-modern-crm) · [Landing pages](#landing-pages) · [Quick start](#quick-start) · [Configuration](#configuration) · [Architecture](#architecture)
 
 </div>
 
@@ -26,7 +26,7 @@ One agent your whole admissions team talks to. Prospects, schools, applications,
 |                                  |                                                                                                                                                                                                                                                                                 |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 🧭 **An agent, not a dashboard** | Home is a conversation. The **Chief of Staff** knows every prospect, school and application, briefs the team each morning, logs the calls, moves the applications, drafts the outreach and builds the landing pages — through tools, against the same records the screens show. |
-| 🗂️ **A real CRM underneath**     | The information architecture of [Twenty](https://github.com/twentyhq/twenty) — objects in a sidebar, table and kanban views, record pages with a timeline — on the ibl.ai CRM API, in admissions vocabulary: prospects, schools, applications in funnels, counselors.           |
+| 🗂️ **A real CRM underneath**     | A modern CRM's information architecture — objects in a sidebar, table and kanban views, record pages with a timeline — on the ibl.ai CRM API, in admissions vocabulary: prospects, schools, applications in funnels, counselors.                                                |
 | 🌐 **Prospect-facing pages**     | Publish "Request information" or event pages at `/p/<org>/<slug>`: fast, server-rendered, no sign-in. A submission becomes a prospect, a school, an application in the right funnel stage, tags and a note — automatically.                                                     |
 | 🔓 **Your code, your data**      | MIT-licensed and self-hostable. Records live in your ibl.ai organization, scoped by the platform's multi-tenancy — no second database. SSO, roles, notifications, memory, analytics and billing come from the platform.                                                         |
 | 📱 **Everywhere**                | One codebase ships as web, macOS, Windows, Linux, iOS and Android (Tauri 2 shells), exactly like [iblai/os](https://github.com/iblai/os) and [iblai/crm](https://github.com/iblai/crm).                                                                                         |
@@ -63,7 +63,7 @@ Every member of the recruitment team — counselors, recruiters, operations, the
 
 ---
 
-## The CRM: Twenty's shape, admissions words
+## The CRM: admissions words on a modern CRM
 
 The platform's CRM API speaks sales; the app keeps those names in code and shows admissions language everywhere a human reads it ([`lib/recruit/vocabulary.ts`](lib/recruit/vocabulary.ts)):
 
@@ -281,7 +281,6 @@ Sign-in is the platform's hosted round trip; `TenantProvider` re-authenticates w
 - [docs/landing-pages.md](docs/landing-pages.md) — building, publishing, mapping, the submission pipeline
 - [docs/development.md](docs/development.md) — setup, scripts, verification
 - [iblai/vibe](https://github.com/iblai/vibe) — the skills and SDK toolkit this app is built with · [iblai/crm](https://github.com/iblai/crm) — the general-purpose sibling
-- [Twenty](https://github.com/twentyhq/twenty) — the CRM whose product model inspired this one
 
 <div align="center">
 
