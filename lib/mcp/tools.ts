@@ -433,7 +433,7 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
           : null;
       }
       if (args.fields && typeof args.fields === "object") {
-        let metadata: Metadata = { ...(current.metadata ?? {}) };
+        let metadata: Metadata = { ...current.metadata };
         for (const [k, v] of Object.entries(args.fields as Record<string, unknown>)) {
           const field = PROSPECT_FIELDS.find((f) => f.key === k) ?? {
             key: k,
@@ -760,7 +760,7 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
           args.est_net_tuition === null ? "0" : String(num(args.est_net_tuition) ?? 0);
       if (args.counselor_id !== undefined)
         body.owner = args.counselor_id === null ? null : num(args.counselor_id);
-      let metadata: Metadata = { ...(current.metadata ?? {}) };
+      let metadata: Metadata = { ...current.metadata };
       for (const field of APPLICATION_FIELDS) {
         if (args[field.key] !== undefined)
           metadata = withMeta(metadata, field, args[field.key] as string | boolean | number | null);

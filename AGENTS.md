@@ -92,13 +92,20 @@ appears in dialogs, record pages, tools and the landing-page mapping.
    unknown or draft pages show the neutral "not available" state. Submissions
    are validated against the stored definition, never against client input.
 8. **Brand.** Primary `#0058cc`, tint `#eef6fc`, gradient CTA
-   `className="ibl-button-primary"`, Lucide icons `strokeWidth={1.75}`, white
-   cards with `border-[var(--border-color,#e5e7eb)]`. Pages are client
-   components: `<PageHeader/>` then `<div className="flex-1 overflow-auto">`.
-   No dark mode unless asked. Landing pages use the institution's accent color
-   from Settings → Branding, not the app brand.
-9. **Verify before you say it works:** `pnpm typecheck && pnpm lint && pnpm test
-&& pnpm build`; open the page; screenshot it. Journeys live in `e2e/journeys/`.
+   `className="ibl-button-primary"`, white cards with
+   `border-[var(--border-color,#e5e7eb)]`. The house shell: Open Sans on the
+   body and the SDK sidebar (`app/layout.tsx`, `--font-sans` in `globals.css`);
+   the top bar in the OS's type (`components/crm/top-bar.tsx`: 64 px, a
+   `#D0E0FF` hairline, the system font, 14 px medium `#646464`); Lucide renders
+   at 1.75 through `globals.css`, no `strokeWidth` prop; dialog titles, labels
+   and table heads carry the house classes in `components/ui`, never at the call
+   site. Pages are client components: `<PageHeader/>` then
+   `<div className="flex-1 overflow-auto">`. No dark mode unless asked. Landing
+   pages use the institution's accent color from Settings → Branding, not the
+   app brand.
+9. **Verify before you say it works:** `pnpm typecheck && pnpm lint && pnpm
+   format:check && pnpm test && pnpm build`; open the page; screenshot it.
+   Journeys live in `e2e/journeys/`.
 10. **Commits:** conventional messages; never `--no-verify`.
 
 ## Where things are

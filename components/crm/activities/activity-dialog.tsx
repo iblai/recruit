@@ -223,9 +223,7 @@ export function ActivityDialog({
           </div>
 
           <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="activity-title" className="text-muted-foreground text-xs">
-              Title
-            </Label>
+            <Label htmlFor="activity-title">Title</Label>
             <Input
               id="activity-title"
               value={draft.title}
@@ -240,7 +238,7 @@ export function ActivityDialog({
           </div>
 
           <div className="grid gap-1.5">
-            <Label className="text-muted-foreground text-xs">Prospect</Label>
+            <Label>Prospect</Label>
             <Popover open={personOpen} onOpenChange={setPersonOpen}>
               <PopoverTrigger
                 render={
@@ -311,7 +309,7 @@ export function ActivityDialog({
           </div>
 
           <div className="grid gap-1.5">
-            <Label className="text-muted-foreground text-xs">
+            <Label>
               <ClipboardList className="size-3" /> Application
             </Label>
             <SimpleSelect
@@ -356,9 +354,7 @@ export function ActivityDialog({
           </div>
 
           <div className="grid gap-1.5">
-            <Label htmlFor="activity-to" className="text-muted-foreground text-xs">
-              Ends
-            </Label>
+            <Label htmlFor="activity-to">Ends</Label>
             <Input
               id="activity-to"
               type="datetime-local"
@@ -370,9 +366,7 @@ export function ActivityDialog({
           </div>
 
           <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="activity-location" className="text-muted-foreground text-xs">
-              Location / link
-            </Label>
+            <Label htmlFor="activity-location">Location / link</Label>
             <Input
               id="activity-location"
               value={draft.location}
@@ -383,9 +377,7 @@ export function ActivityDialog({
           </div>
 
           <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="activity-comment" className="text-muted-foreground text-xs">
-              Details
-            </Label>
+            <Label htmlFor="activity-comment">Details</Label>
             <Textarea
               id="activity-comment"
               value={draft.comment}
@@ -424,9 +416,7 @@ export function ActivityDialog({
               checked={draft.isDone}
               onCheckedChange={(checked) => set("isDone", checked === true)}
             />
-            <Label htmlFor="activity-done" className="text-sm text-gray-700">
-              Already done
-            </Label>
+            <Label htmlFor="activity-done">Already done</Label>
           </div>
         </div>
 

@@ -68,7 +68,7 @@ export default function HomePage() {
                   <Button variant="outline" size="sm" render={<Link href={href("/dashboard")} />} />
                 }
               >
-                <ChartColumn data-icon="inline-start" strokeWidth={1.75} /> {VOCAB.funnel.one}
+                <ChartColumn data-icon="inline-start" /> {VOCAB.funnel.one}
               </TooltipTrigger>
               <TooltipContent side="bottom">The full funnel dashboard</TooltipContent>
             </Tooltip>
@@ -85,9 +85,9 @@ export default function HomePage() {
                 }
               >
                 {showBrief ? (
-                  <PanelRightClose data-icon="inline-start" strokeWidth={1.75} />
+                  <PanelRightClose data-icon="inline-start" />
                 ) : (
-                  <PanelRightOpen data-icon="inline-start" strokeWidth={1.75} />
+                  <PanelRightOpen data-icon="inline-start" />
                 )}
                 Today
               </TooltipTrigger>
@@ -104,7 +104,7 @@ export default function HomePage() {
                     />
                   }
                 >
-                  <MessageSquarePlus data-icon="inline-start" strokeWidth={1.75} /> New conversation
+                  <MessageSquarePlus data-icon="inline-start" /> New conversation
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   Start a fresh thread with the {VOCAB.chiefOfStaff}

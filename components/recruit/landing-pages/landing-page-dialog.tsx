@@ -93,7 +93,7 @@ export function LandingPageDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="flex size-7 items-center justify-center rounded-lg bg-[#eef6fc] text-[#0058cc]">
-              <Globe className="size-4" strokeWidth={1.75} />
+              <Globe className="size-4" />
             </span>
             New landing page
           </DialogTitle>
@@ -110,7 +110,7 @@ export function LandingPageDialog({
           }}
         >
           <div className="grid gap-1.5">
-            <Label htmlFor="lp-title" className="text-muted-foreground text-xs">
+            <Label htmlFor="lp-title">
               Title <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -126,9 +126,7 @@ export function LandingPageDialog({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="lp-slug" className="text-muted-foreground text-xs">
-              URL slug
-            </Label>
+            <Label htmlFor="lp-slug">URL slug</Label>
             <Input
               id="lp-slug"
               value={slug}
@@ -150,9 +148,7 @@ export function LandingPageDialog({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="lp-program" className="text-muted-foreground text-xs">
-                Program (optional)
-              </Label>
+              <Label htmlFor="lp-program">Program (optional)</Label>
               <Input
                 id="lp-program"
                 value={program}
@@ -161,7 +157,7 @@ export function LandingPageDialog({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label className="text-muted-foreground text-xs">Entry term (optional)</Label>
+              <Label>Entry term (optional)</Label>
               <SimpleSelect
                 value={term}
                 onChange={setTerm}
@@ -173,7 +169,7 @@ export function LandingPageDialog({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label className="text-muted-foreground text-xs">Funnel</Label>
+              <Label>Funnel</Label>
               <SimpleSelect
                 value={pipelineCode}
                 onChange={(v) => {
@@ -186,7 +182,7 @@ export function LandingPageDialog({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label className="text-muted-foreground text-xs">Starting stage</Label>
+              <Label>Starting stage</Label>
               <SimpleSelect
                 value={stageCode}
                 onChange={setStageCode}

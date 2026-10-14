@@ -1,4 +1,3 @@
-
 name: Release Windows (Tauri)
 
 # Builds SIGNED NSIS installers for x64 + arm64 and attaches them to a GitHub
@@ -21,7 +20,7 @@ name: Release Windows (Tauri)
 on:
   push:
     tags:
-      - 'app-v*'
+      - "app-v*"
   workflow_dispatch:
 
 concurrency:
@@ -48,7 +47,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .tool-versions
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -183,4 +182,3 @@ jobs:
           fi
           gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
           echo "Attached ${#files[@]} installer(s) to $RELEASE_TAG"
-

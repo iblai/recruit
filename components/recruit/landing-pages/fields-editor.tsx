@@ -120,7 +120,7 @@ export function FieldsEditor({
                     />
                   }
                 >
-                  <ArrowUp strokeWidth={1.75} />
+                  <ArrowUp />
                 </TooltipTrigger>
                 <TooltipContent>Move up</TooltipContent>
               </Tooltip>
@@ -136,7 +136,7 @@ export function FieldsEditor({
                     />
                   }
                 >
-                  <ArrowDown strokeWidth={1.75} />
+                  <ArrowDown />
                 </TooltipTrigger>
                 <TooltipContent>Move down</TooltipContent>
               </Tooltip>
@@ -152,7 +152,7 @@ export function FieldsEditor({
                     />
                   }
                 >
-                  <Trash2 strokeWidth={1.75} />
+                  <Trash2 />
                 </TooltipTrigger>
                 <TooltipContent>Remove this question</TooltipContent>
               </Tooltip>
@@ -173,8 +173,12 @@ export function FieldsEditor({
               className="h-8 text-sm"
               aria-label={`Placeholder of field ${i + 1}`}
             />
-            <label className="flex h-8 items-center gap-2 text-xs text-gray-700">
+            <label
+              htmlFor={`field-${i}-required`}
+              className="flex h-8 items-center gap-2 text-xs text-gray-700"
+            >
               <Switch
+                id={`field-${i}-required`}
                 checked={!!f.required}
                 onCheckedChange={(on: boolean) => set(i, { required: on })}
                 aria-label={`${f.label} is required`}
@@ -204,7 +208,7 @@ export function FieldsEditor({
         </div>
       ))}
       <Button variant="outline" size="sm" className="justify-start border-dashed" onClick={add}>
-        <Plus data-icon="inline-start" strokeWidth={1.75} /> Add a question
+        <Plus data-icon="inline-start" /> Add a question
       </Button>
     </div>
   );

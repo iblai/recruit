@@ -45,7 +45,7 @@ export function ActivityIcon({
         className,
       )}
     >
-      <Icon strokeWidth={1.75} />
+      <Icon />
     </span>
   );
 }

@@ -383,7 +383,7 @@ function StagesEditor({ pipeline }: { pipeline: Pipeline }) {
     <div className="rounded-xl border border-[var(--border-color,#e5e7eb)] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <Layers className="size-4 text-[#0058cc]" strokeWidth={1.75} />
+          <Layers className="size-4 text-[#0058cc]" />
           <h3 className="text-sm font-semibold text-gray-900">Stages</h3>
           <span className="text-muted-foreground text-[11px]">
             Drag to reorder — the order is the board's column order.
@@ -470,7 +470,7 @@ function StageRow({ stage, pipelineId }: { stage: PipelineStage; pipelineId: num
             />
           }
         >
-          <GripVertical className="size-4" strokeWidth={1.75} />
+          <GripVertical className="size-4" />
         </TooltipTrigger>
         <TooltipContent side="right">Drag to reorder — the board follows this order</TooltipContent>
       </Tooltip>
@@ -634,9 +634,7 @@ function PipelineDialog({
 
         <div className="grid gap-3.5 px-4 pb-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="pipeline-name" className="text-muted-foreground text-xs">
-              Name
-            </Label>
+            <Label htmlFor="pipeline-name">Name</Label>
             <Input
               id="pipeline-name"
               value={name}
@@ -650,9 +648,7 @@ function PipelineDialog({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="pipeline-code" className="text-muted-foreground text-xs">
-              Code
-            </Label>
+            <Label htmlFor="pipeline-code">Code</Label>
             <Input
               id="pipeline-code"
               value={code}
@@ -780,9 +776,7 @@ function AddStageDialog({
 
         <div className="grid gap-3.5 px-4 pb-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="stage-name" className="text-muted-foreground text-xs">
-              Name
-            </Label>
+            <Label htmlFor="stage-name">Name</Label>
             <Input
               id="stage-name"
               value={name}
@@ -796,9 +790,7 @@ function AddStageDialog({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="stage-code" className="text-muted-foreground text-xs">
-              Code
-            </Label>
+            <Label htmlFor="stage-code">Code</Label>
             <Input
               id="stage-code"
               value={code}
@@ -813,9 +805,7 @@ function AddStageDialog({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="stage-probability" className="text-muted-foreground text-xs">
-                Probability (%)
-              </Label>
+              <Label htmlFor="stage-probability">Probability (%)</Label>
               <Input
                 id="stage-probability"
                 type="number"
@@ -827,7 +817,7 @@ function AddStageDialog({
               />
             </div>
             <div className="grid gap-1.5">
-              <Label className="text-muted-foreground text-xs">Outcome</Label>
+              <Label>Outcome</Label>
               <SimpleSelect
                 value={terminal}
                 onChange={(v) => setTerminal(v as Terminal)}

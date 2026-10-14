@@ -31,7 +31,7 @@ export function InfoTip({
           className,
         )}
       >
-        <CircleHelp className="size-3.5" strokeWidth={1.75} aria-hidden />
+        <CircleHelp className="size-3.5" aria-hidden />
       </TooltipTrigger>
       <TooltipContent side={side}>{children}</TooltipContent>
     </Tooltip>

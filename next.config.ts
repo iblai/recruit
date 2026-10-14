@@ -24,53 +24,20 @@ if (
 }
 
 import type { NextConfig } from "next";
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-
-/**
- * Resolve a package to its root directory so webpack never loads duplicate
- * copies (can happen in npm/pnpm hoisting with differing peer deps).
- * Without this, @reduxjs/toolkit may be duplicated and SDK components get
- * a different ReactReduxContext — RTK Query hooks silently return undefined.
- */
-function dedup(packageName: string): string | undefined {
-  try {
-    const entry = require.resolve(packageName);
-    const marker = `node_modules/${packageName}`;
-    const idx = entry.lastIndexOf(marker);
-    if (idx !== -1) return entry.slice(0, idx + marker.length);
-    return undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-const resolveAliases: Record<string, string> = {};
-const dataLayerDir = dedup("@iblai/data-layer");
-if (dataLayerDir) resolveAliases["@iblai/data-layer"] = dataLayerDir;
-const rtkDir = dedup("@reduxjs/toolkit");
-if (rtkDir) resolveAliases["@reduxjs/toolkit"] = rtkDir;
-const reactReduxDir = dedup("react-redux");
-if (reactReduxDir) resolveAliases["react-redux"] = reactReduxDir;
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Vercel builds the regular output; standalone is for the Dockerfile.
+  output: process.env.VERCEL ? undefined : "standalone",
   // The SDK's useVoiceChat never resets its isMounted ref after StrictMode's
   // dev double-mount, wedging voice input at "Processing…". Host workaround
   // (see /iblai-vibe-agent-chat "Known issues"); production runs effects once.
   reactStrictMode: false,
+  // `next dev` would otherwise append its "AI agents" block to AGENTS.md on every start.
+  agentRules: false,
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }],
   },
   turbopack: {},
-  webpack: (config) => {
-    config.resolve = config.resolve || {};
-    config.resolve.alias = config.resolve.alias || {};
-    // ibl.ai: Deduplicate @reduxjs/toolkit + react-redux (shared Redux context)
-    Object.assign(config.resolve.alias, resolveAliases);
-    return config;
-  },
 };
 
 export default nextConfig;

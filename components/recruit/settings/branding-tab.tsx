@@ -39,7 +39,7 @@ export function BrandingTab() {
       toast.error("Accent color must be a 6-digit hex value like #0058cc");
       return;
     }
-    if (logo && !/^https:\/\//.test(logo)) {
+    if (logo && !logo.startsWith("https://")) {
       toast.error("Logo must be an https URL");
       return;
     }
@@ -60,7 +60,7 @@ export function BrandingTab() {
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
       <section className={CARD}>
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-          <Palette className="size-4 text-[#0058cc]" strokeWidth={1.75} /> Landing-page branding
+          <Palette className="size-4 text-[#0058cc]" /> Landing-page branding
         </h3>
         <p className="text-muted-foreground mt-1 text-xs">
           Shown on every public page under <code className="font-mono">/p/…</code>. Falls back to
@@ -68,9 +68,7 @@ export function BrandingTab() {
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="brand-name" className="text-muted-foreground text-xs">
-              Institution name
-            </Label>
+            <Label htmlFor="brand-name">Institution name</Label>
             <Input
               id="brand-name"
               value={name}
@@ -80,9 +78,7 @@ export function BrandingTab() {
             />
           </div>
           <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="brand-logo" className="text-muted-foreground text-xs">
-              Logo URL (https)
-            </Label>
+            <Label htmlFor="brand-logo">Logo URL (https)</Label>
             <Input
               id="brand-logo"
               value={logo}
@@ -92,9 +88,7 @@ export function BrandingTab() {
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="brand-accent" className="text-muted-foreground text-xs">
-              Accent color
-            </Label>
+            <Label htmlFor="brand-accent">Accent color</Label>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -112,9 +106,7 @@ export function BrandingTab() {
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="brand-email" className="text-muted-foreground text-xs">
-              Admissions contact email
-            </Label>
+            <Label htmlFor="brand-email">Admissions contact email</Label>
             <Input
               id="brand-email"
               type="email"
@@ -132,11 +124,7 @@ export function BrandingTab() {
             disabled={isSaving}
             onClick={() => void save()}
           >
-            {isSaving ? (
-              <Spinner data-icon="inline-start" />
-            ) : (
-              <Save data-icon="inline-start" strokeWidth={1.75} />
-            )}{" "}
+            {isSaving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}{" "}
             Save branding
           </Button>
         </div>

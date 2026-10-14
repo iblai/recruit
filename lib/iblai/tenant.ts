@@ -1,5 +1,5 @@
 /**
- * Organization (tenant) resolution for ibl.ai/crm — a MULTI-ORGANIZATION app.
+ * Organization (tenant) resolution for ibl.ai/recruit — a MULTI-ORGANIZATION app.
  *
  * The organization the user is working in comes from the URL
  * (`/platform/[tenantKey]/…`). This module only answers "which org should we

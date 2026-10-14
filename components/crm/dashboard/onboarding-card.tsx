@@ -30,7 +30,7 @@ export function OnboardingCard() {
           </Button>
         </div>
         <p className="text-muted-foreground mt-4 flex items-center gap-1.5 text-xs">
-          <LayoutTemplate className="size-3.5 shrink-0" strokeWidth={1.75} />
+          <LayoutTemplate className="size-3.5 shrink-0" />
           <span>
             Capturing inquiries from a fair, a visit or your website?{" "}
             <Link

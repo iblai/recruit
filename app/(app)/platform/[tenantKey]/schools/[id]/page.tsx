@@ -106,12 +106,12 @@ export default function OrganizationDetailPage() {
     return (
       <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
         <EmptyState
-          icon={<Building2 strokeWidth={1.75} />}
+          icon={<Building2 />}
           title={`This ${VOCAB.school.lower} no longer exists`}
           description="It may have been deleted by someone else on your team."
           action={
             <Button variant="outline" onClick={() => router.push(href("/schools"))}>
-              <ArrowLeft data-icon="inline-start" strokeWidth={1.75} /> Back to {VOCAB.school.many}
+              <ArrowLeft data-icon="inline-start" /> Back to {VOCAB.school.many}
             </Button>
           }
         />
@@ -172,7 +172,7 @@ export default function OrganizationDetailPage() {
                   <Button className="ibl-button-primary" onClick={() => setAddPersonOpen(true)} />
                 }
               >
-                <Plus data-icon="inline-start" strokeWidth={1.75} /> Add {VOCAB.prospect.lower}
+                <Plus data-icon="inline-start" /> Add {VOCAB.prospect.lower}
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 Create a {VOCAB.prospect.lower} or contact already attached to this{" "}
@@ -188,13 +188,13 @@ export default function OrganizationDetailPage() {
                     />
                   }
                 >
-                  <MoreHorizontal strokeWidth={1.75} />
+                  <MoreHorizontal />
                 </TooltipTrigger>
                 <TooltipContent side="bottom">Delete this {VOCAB.school.lower}</TooltipContent>
               </Tooltip>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem variant="destructive" onClick={() => setConfirmDelete(true)}>
-                  <Trash2 strokeWidth={1.75} /> Delete {VOCAB.school.lower}
+                  <Trash2 /> Delete {VOCAB.school.lower}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -279,13 +279,12 @@ export default function OrganizationDetailPage() {
               <TabsContent value="people" className="pt-4">
                 {!loadingPeople && peopleRows.length === 0 ? (
                   <EmptyState
-                    icon={<Users strokeWidth={1.75} />}
+                    icon={<Users />}
                     title={`No ${VOCAB.prospect.lowerMany} from here yet`}
                     description={`Add the students you are recruiting from ${organization.name}, and the counselors you work with there.`}
                     action={
                       <Button className="ibl-button-primary" onClick={() => setAddPersonOpen(true)}>
-                        <Plus data-icon="inline-start" strokeWidth={1.75} /> Add{" "}
-                        {VOCAB.prospect.lower}
+                        <Plus data-icon="inline-start" /> Add {VOCAB.prospect.lower}
                       </Button>
                     }
                   />
@@ -296,8 +295,7 @@ export default function OrganizationDetailPage() {
                         {prospectCountLabel}
                       </span>
                       <Button variant="outline" size="sm" onClick={() => setAddPersonOpen(true)}>
-                        <Plus data-icon="inline-start" strokeWidth={1.75} /> Add{" "}
-                        {VOCAB.prospect.lower}
+                        <Plus data-icon="inline-start" /> Add {VOCAB.prospect.lower}
                       </Button>
                     </div>
                     <div className="overflow-x-auto">

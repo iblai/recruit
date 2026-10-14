@@ -66,7 +66,7 @@ export function DealsMiniTable({
   if (!deals.length) {
     return (
       <EmptyState
-        icon={<Handshake strokeWidth={1.75} />}
+        icon={<Handshake />}
         title={`No ${VOCAB.application.lowerMany} yet`}
         description={
           emptyDescription ??
@@ -74,7 +74,7 @@ export function DealsMiniTable({
         }
         action={
           <Button className="ibl-button-primary" size="sm" onClick={() => router.push(newDealHref)}>
-            <Plus data-icon="inline-start" strokeWidth={1.75} /> New {VOCAB.application.lower}
+            <Plus data-icon="inline-start" /> New {VOCAB.application.lower}
           </Button>
         }
       />
@@ -91,7 +91,7 @@ export function DealsMiniTable({
             : VOCAB.application.lowerMany}
         </span>
         <Button variant="outline" size="sm" onClick={() => router.push(newDealHref)}>
-          <Plus data-icon="inline-start" strokeWidth={1.75} /> New {VOCAB.application.lower}
+          <Plus data-icon="inline-start" /> New {VOCAB.application.lower}
         </Button>
       </div>
       <div className="overflow-x-auto">

@@ -18,15 +18,14 @@ export default function NotificationsPage() {
         title="Notifications"
         description="CRM events and platform alerts for you"
       />
-      <div className="flex-1 overflow-auto p-4 md:p-6">
-        <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-white">
-          <NotificationDisplay
-            org={tenantKey}
-            userId={username}
-            isAdmin={isAdmin}
-            selectedNotificationId={notificationId}
-          />
-        </div>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <NotificationDisplay
+          org={tenantKey}
+          userId={username}
+          isAdmin={isAdmin}
+          selectedNotificationId={notificationId}
+          className="min-h-0 flex-1"
+        />
       </div>
     </>
   );

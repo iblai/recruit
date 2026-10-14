@@ -100,10 +100,10 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
   const appUrl = input.appUrl.replace(/\/+$/, "");
   if (!/^https?:\/\//.test(appUrl)) throw new Error("appUrl must be an absolute http(s) origin");
   const canWireTools =
-    /^https:\/\//.test(appUrl) && !!input.mcpToken && input.mcpToken.length >= 16;
+    appUrl.startsWith("https://") && !!input.mcpToken && input.mcpToken.length >= 16;
   const auth = input.sessionToken ? { Authorization: `Token ${input.sessionToken}` } : undefined;
   const platformFetch = <T>(path: string, init: Parameters<typeof rawPlatformFetch>[1] = {}) =>
-    rawPlatformFetch<T>(path, { ...init, headers: { ...(auth ?? {}), ...(init.headers ?? {}) } });
+    rawPlatformFetch<T>(path, { ...init, headers: { ...auth, ...init.headers } });
   const mentorBase = `/dm/api/ai-mentor/orgs/${enc(org)}/users/${enc(username)}`;
   const metaPath = `/dm/api/core/orgs/${enc(org)}/metadata/`;
 
@@ -162,7 +162,7 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
   let serverId: number | null = null;
   if (!canWireTools) {
     log(
-      /^https:\/\//.test(appUrl)
+      appUrl.startsWith("https://")
         ? "Tools not wired: RECRUIT_MCP_TOKEN is not set (≥ 16 chars). Re-run setup after setting it."
         : `Tools not wired: ${appUrl} is not an https origin the platform can call. Set NEXT_PUBLIC_APP_URL and re-run setup.`,
     );

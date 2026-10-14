@@ -265,7 +265,12 @@ describe("recruitment tools", () => {
           id: 2,
           type: "call",
           title: "Today",
-          schedule_from: "2026-10-12T18:00:00Z",
+          schedule_from: new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            10,
+          ).toISOString(),
           is_done: false,
         },
         { id: 3, type: "note", title: "Unscheduled", schedule_from: null, is_done: false },

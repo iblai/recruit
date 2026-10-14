@@ -92,7 +92,7 @@ export function AssistantPanel() {
       <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-gray-100 px-3">
         <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
           <span className="flex size-6 items-center justify-center rounded-md bg-[#eef6fc] text-[#0058cc]">
-            <Sparkles className="size-3.5" strokeWidth={1.75} />
+            <Sparkles className="size-3.5" />
           </span>
           {VOCAB.chiefOfStaff}
         </span>
@@ -108,7 +108,7 @@ export function AssistantPanel() {
                 />
               }
             >
-              <MessageSquarePlus strokeWidth={1.75} />
+              <MessageSquarePlus />
             </TooltipTrigger>
             <TooltipContent side="bottom">Start a new conversation</TooltipContent>
           </Tooltip>
@@ -123,7 +123,7 @@ export function AssistantPanel() {
                 />
               }
             >
-              <X strokeWidth={1.75} />
+              <X />
             </TooltipTrigger>
             <TooltipContent side="bottom">Close the panel</TooltipContent>
           </Tooltip>

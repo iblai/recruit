@@ -89,9 +89,9 @@ export function LeadSourcesTab() {
           <Table>
             <TableHeader>
               <TableRow className="bg-[#fafbfc]">
-                <TableHead className="text-muted-foreground text-xs">Name</TableHead>
-                <TableHead className="text-muted-foreground text-xs">Code</TableHead>
-                <TableHead className="text-muted-foreground text-xs">Created</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Created</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -227,9 +227,7 @@ function LeadSourceDialog({
 
         <div className="grid gap-3.5 px-4 pb-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="source-name" className="text-muted-foreground text-xs">
-              Name
-            </Label>
+            <Label htmlFor="source-name">Name</Label>
             <Input
               id="source-name"
               value={name}
@@ -249,9 +247,7 @@ function LeadSourceDialog({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="source-code" className="text-muted-foreground text-xs">
-              Code
-            </Label>
+            <Label htmlFor="source-code">Code</Label>
             <Input
               id="source-code"
               value={code}

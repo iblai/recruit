@@ -326,7 +326,7 @@ export const crmApi = createApi({
     listLeadSources: builder.query<Paginated<LeadSource>, LeadSourceListParams | void>({
       query: (params) => ({
         url: "/lead-sources/",
-        params: cleanParams({ page_size: 100, ...(params ?? {}) }),
+        params: cleanParams({ page_size: 100, ...params }),
       }),
       providesTags: (res) => listTags("LeadSource", res?.results),
     }),
@@ -359,7 +359,7 @@ export const crmApi = createApi({
         for (let i = 0; i < 50; i++) {
           const res = await fetchWithBQ({
             url: "/deals/",
-            params: cleanParams({ ...(params ?? {}), page, page_size: 100 }),
+            params: cleanParams({ ...params, page, page_size: 100 }),
           } as FetchArgs);
           if (res.error) return { error: res.error };
           const data = res.data as Paginated<Deal>;
@@ -471,7 +471,7 @@ export const crmApi = createApi({
     listTags: builder.query<Paginated<Tag>, TagListParams | void>({
       query: (params) => ({
         url: "/tags/",
-        params: cleanParams({ page_size: 100, ...(params ?? {}) }),
+        params: cleanParams({ page_size: 100, ...params }),
       }),
       providesTags: (res) => listTags("Tag", res?.results),
     }),

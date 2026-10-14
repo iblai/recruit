@@ -45,7 +45,7 @@ export async function applySubmission(
     : undefined;
   if (existing) {
     personId = existing.id;
-    const metadata = { ...(existing.metadata ?? {}), ...plan.person.metadata };
+    const metadata = { ...existing.metadata, ...plan.person.metadata };
     await crm.updatePerson(existing.id, {
       metadata,
       ...(plan.person.contact_numbers?.length && !existing.contact_numbers?.length

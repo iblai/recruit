@@ -141,7 +141,7 @@ function LandingPagesView() {
                 />
               }
             >
-              <Plus data-icon="inline-start" strokeWidth={1.75} /> New landing page
+              <Plus data-icon="inline-start" /> New landing page
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {isAdmin
@@ -156,13 +156,13 @@ function LandingPagesView() {
           <Skeleton className="h-64 w-full rounded-xl" />
         ) : pages.length === 0 ? (
           <EmptyState
-            icon={<Globe strokeWidth={1.75} />}
+            icon={<Globe />}
             title="No landing pages yet"
             description="Publish a “Request information” page, link it from your site or a QR code at a college fair, and every submission lands here as a prospect — with an application in the funnel and a note of what they said."
             action={
               isAdmin ? (
                 <Button className="ibl-button-primary" onClick={() => setCreateOpen(true)}>
-                  <Plus data-icon="inline-start" strokeWidth={1.75} /> Create your first page
+                  <Plus data-icon="inline-start" /> Create your first page
                 </Button>
               ) : null
             }
@@ -172,21 +172,11 @@ function LandingPagesView() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
-                  <TableHead className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-                    Page
-                  </TableHead>
-                  <TableHead className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-                    Funnel · stage
-                  </TableHead>
-                  <TableHead className="text-muted-foreground text-right text-[11px] font-semibold tracking-wide uppercase">
-                    Submissions
-                  </TableHead>
-                  <TableHead className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-                    Updated
-                  </TableHead>
-                  <TableHead className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
-                    Published
-                  </TableHead>
+                  <TableHead>Page</TableHead>
+                  <TableHead>Funnel · stage</TableHead>
+                  <TableHead className="text-right">Submissions</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead>Published</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -263,7 +253,7 @@ function LandingPagesView() {
                               />
                             }
                           >
-                            <MoreHorizontal strokeWidth={1.75} />
+                            <MoreHorizontal />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
                             <DropdownMenuItem
@@ -273,19 +263,26 @@ function LandingPagesView() {
                                 />
                               }
                             >
-                              <Pencil strokeWidth={1.75} /> Edit
+                              <Pencil /> Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => void copyUrl(page)}>
-                              <Copy strokeWidth={1.75} /> Copy link
+                              <Copy /> Copy link
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              render={<a href={url} target="_blank" rel="noreferrer noopener" />}
+                              render={
+                                <a
+                                  href={url}
+                                  target="_blank"
+                                  rel="noreferrer noopener"
+                                  aria-label="Open the public page"
+                                />
+                              }
                               disabled={!page.published}
                             >
-                              <ExternalLink strokeWidth={1.75} /> Open public page
+                              <ExternalLink /> Open public page
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => duplicate(page)} disabled={!isAdmin}>
-                              <Copy strokeWidth={1.75} /> Duplicate
+                              <Copy /> Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
@@ -293,7 +290,7 @@ function LandingPagesView() {
                               onClick={() => setToDelete(page)}
                               disabled={!isAdmin}
                             >
-                              <Trash2 strokeWidth={1.75} /> Delete
+                              <Trash2 /> Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>

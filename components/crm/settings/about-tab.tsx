@@ -68,7 +68,7 @@ export function AboutTab() {
     <div className="grid gap-4 xl:grid-cols-2">
       <section className="rounded-xl border border-[var(--border-color,#e5e7eb)] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-          <Building2 className="size-4 text-[#0058cc]" strokeWidth={1.75} />
+          <Building2 className="size-4 text-[#0058cc]" />
           This organization
         </h3>
         <dl className="mt-3 divide-y divide-gray-100 text-sm">
@@ -130,7 +130,7 @@ export function AboutTab() {
       <section className="rounded-xl border border-[var(--border-color,#e5e7eb)] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-            <UserCog className="size-4 text-[#0058cc]" strokeWidth={1.75} />
+            <UserCog className="size-4 text-[#0058cc]" />
             Team roles
           </h3>
           <Button variant="outline" size="sm" render={<Link href={href("/admin/users")} />}>
@@ -140,8 +140,8 @@ export function AboutTab() {
         <Table>
           <TableHeader>
             <TableRow className="bg-[#fafbfc]">
-              <TableHead className="text-muted-foreground text-xs">Platform role</TableHead>
-              <TableHead className="text-muted-foreground text-xs">What they can do</TableHead>
+              <TableHead>Platform role</TableHead>
+              <TableHead>What they can do</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -152,7 +152,7 @@ export function AboutTab() {
                     <span
                       className={`flex size-6 items-center justify-center rounded-md ${role.tone}`}
                     >
-                      <role.icon className="size-3.5" strokeWidth={1.75} />
+                      <role.icon className="size-3.5" />
                     </span>
                     {role.name}
                   </span>

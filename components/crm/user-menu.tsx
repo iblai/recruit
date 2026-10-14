@@ -79,7 +79,8 @@ export function UserMenu() {
       currentPlan=""
       metadata={
         metadata as
-          { support_url?: string; help_center_url?: string; show_help?: boolean } | undefined
+          | { support_url?: string; help_center_url?: string; show_help?: boolean }
+          | undefined
       }
       metadataLoaded={metadataLoaded}
       authURL={config.authUrl()}

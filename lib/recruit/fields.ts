@@ -211,7 +211,7 @@ export function withMeta(
   field: MetaField,
   raw: string | boolean | number | null | undefined,
 ): Metadata {
-  const next: Metadata = { ...(metadata ?? {}) };
+  const next: Metadata = { ...metadata };
   const value = coerceMeta(field, raw);
   if (value === undefined) delete next[field.key];
   else next[field.key] = value;

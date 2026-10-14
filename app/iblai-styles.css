@@ -1,4 +1,3 @@
-
 /*
  * ibl.ai Styles
  *
@@ -14,13 +13,13 @@
  *   6. IBL custom utility classes
  */
 
-@import 'tw-animate-css';
+@import "tw-animate-css";
 @tailwind utilities;
 
 @plugin 'tailwind-scrollbar';
 
 /* SDK base styles — injects ~130 CSS variables + utility classes onto :root */
-@import '@iblai/iblai-js/web-containers/styles';
+@import "@iblai/iblai-js/web-containers/styles";
 
 /* Scan SDK compiled JS so Tailwind generates classes used inside SDK components.
  * Explicit @source paths are required because Tailwind's auto-detection
@@ -73,72 +72,72 @@
  * Primary: #0058cc (ibl.ai blue), Gradient: #00b0ef -> #0058cc */
 :root {
   --radius: 0.5rem;
-  --background: oklch(1 0 0);                    /* #ffffff */
-  --foreground: oklch(0.521 0.022 255.6);        /* #616a76  text-primary */
-  --card: oklch(1 0 0);                          /* #ffffff */
-  --card-foreground: oklch(0.521 0.022 255.6);   /* #616a76 */
-  --popover: oklch(1 0 0);                       /* #ffffff */
-  --popover-foreground: oklch(0.521 0.022 255.6);/* #616a76 */
-  --primary: oklch(0.492 0.194 259.3);           /* #0058cc  ibl.ai brand blue */
-  --primary-foreground: oklch(1 0 0);            /* #ffffff */
-  --secondary: oklch(0.988 0.002 247.8);         /* #fafbfc  surface */
-  --secondary-foreground: oklch(0.521 0.022 255.6);/* #616a76 */
-  --muted: oklch(0.988 0.002 247.8);             /* #fafbfc */
-  --muted-foreground: oklch(0.573 0.021 258.4);  /* #717985  text-secondary */
-  --accent: oklch(0.967 0.003 264.5);            /* #f3f4f6  hover-bg */
+  --background: oklch(1 0 0); /* #ffffff */
+  --foreground: oklch(0.521 0.022 255.6); /* #616a76  text-primary */
+  --card: oklch(1 0 0); /* #ffffff */
+  --card-foreground: oklch(0.521 0.022 255.6); /* #616a76 */
+  --popover: oklch(1 0 0); /* #ffffff */
+  --popover-foreground: oklch(0.521 0.022 255.6); /* #616a76 */
+  --primary: oklch(0.492 0.194 259.3); /* #0058cc  ibl.ai brand blue */
+  --primary-foreground: oklch(1 0 0); /* #ffffff */
+  --secondary: oklch(0.988 0.002 247.8); /* #fafbfc  surface */
+  --secondary-foreground: oklch(0.521 0.022 255.6); /* #616a76 */
+  --muted: oklch(0.988 0.002 247.8); /* #fafbfc */
+  --muted-foreground: oklch(0.573 0.021 258.4); /* #717985  text-secondary */
+  --accent: oklch(0.967 0.003 264.5); /* #f3f4f6  hover-bg */
   --accent-foreground: oklch(0.521 0.022 255.6); /* #616a76 */
-  --destructive: oklch(0.637 0.208 25.3);        /* #ef4444  error */
-  --border: oklch(0.928 0.006 264.5);            /* #e5e7eb */
-  --input: oklch(0.928 0.006 264.5);             /* #e5e7eb */
-  --ring: oklch(0.492 0.194 259.3);              /* #0058cc  focus ring = primary */
-  --chart-1: oklch(0.623 0.188 259.8);           /* #3b82f6  info blue */
-  --chart-2: oklch(0.696 0.149 162.5);           /* #10b981  success green */
-  --chart-3: oklch(0.406 0.152 258.2);           /* #004499  primary dark */
-  --chart-4: oklch(0.769 0.165 70.1);            /* #f59e0b  warning amber */
-  --chart-5: oklch(0.713 0.148 233.2);           /* #00b0ef  primary light */
-  --sidebar: oklch(0.988 0.002 247.8);           /* #fafbfc */
-  --sidebar-foreground: oklch(0.521 0.022 255.6);/* #616a76 */
-  --sidebar-primary: oklch(0.492 0.194 259.3);   /* #0058cc */
-  --sidebar-primary-foreground: oklch(1 0 0);    /* #ffffff */
-  --sidebar-accent: oklch(0.967 0.003 264.5);    /* #f3f4f6 */
-  --sidebar-accent-foreground: oklch(0.521 0.022 255.6);/* #616a76 */
-  --sidebar-border: oklch(0.928 0.006 264.5);    /* #e5e7eb */
-  --sidebar-ring: oklch(0.492 0.194 259.3);      /* #0058cc */
+  --destructive: oklch(0.637 0.208 25.3); /* #ef4444  error */
+  --border: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --input: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --ring: oklch(0.492 0.194 259.3); /* #0058cc  focus ring = primary */
+  --chart-1: oklch(0.623 0.188 259.8); /* #3b82f6  info blue */
+  --chart-2: oklch(0.696 0.149 162.5); /* #10b981  success green */
+  --chart-3: oklch(0.406 0.152 258.2); /* #004499  primary dark */
+  --chart-4: oklch(0.769 0.165 70.1); /* #f59e0b  warning amber */
+  --chart-5: oklch(0.713 0.148 233.2); /* #00b0ef  primary light */
+  --sidebar: oklch(0.988 0.002 247.8); /* #fafbfc */
+  --sidebar-foreground: oklch(0.521 0.022 255.6); /* #616a76 */
+  --sidebar-primary: oklch(0.492 0.194 259.3); /* #0058cc */
+  --sidebar-primary-foreground: oklch(1 0 0); /* #ffffff */
+  --sidebar-accent: oklch(0.967 0.003 264.5); /* #f3f4f6 */
+  --sidebar-accent-foreground: oklch(0.521 0.022 255.6); /* #616a76 */
+  --sidebar-border: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --sidebar-ring: oklch(0.492 0.194 259.3); /* #0058cc */
 }
 
 /* ibl.ai dark mode — from SDK base.css .dark-mode tokens */
 .dark {
-  --background: oklch(0.278 0.030 256.8);        /* #1f2937 */
-  --foreground: oklch(0.928 0.006 264.5);        /* #e5e7eb */
-  --card: oklch(0.278 0.030 256.8);              /* #1f2937 */
-  --card-foreground: oklch(0.928 0.006 264.5);   /* #e5e7eb */
-  --popover: oklch(0.278 0.030 256.8);           /* #1f2937 */
-  --popover-foreground: oklch(0.928 0.006 264.5);/* #e5e7eb */
-  --primary: oklch(0.492 0.194 259.3);           /* #0058cc  stays blue in dark mode */
-  --primary-foreground: oklch(1 0 0);            /* #ffffff */
-  --secondary: oklch(0.210 0.032 264.7);         /* #111827 */
-  --secondary-foreground: oklch(0.928 0.006 264.5);/* #e5e7eb */
-  --muted: oklch(0.373 0.031 259.7);             /* #374151 */
-  --muted-foreground: oklch(0.714 0.019 261.3);  /* #9ca3af */
-  --accent: oklch(0.373 0.031 259.7);            /* #374151 */
+  --background: oklch(0.278 0.03 256.8); /* #1f2937 */
+  --foreground: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --card: oklch(0.278 0.03 256.8); /* #1f2937 */
+  --card-foreground: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --popover: oklch(0.278 0.03 256.8); /* #1f2937 */
+  --popover-foreground: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --primary: oklch(0.492 0.194 259.3); /* #0058cc  stays blue in dark mode */
+  --primary-foreground: oklch(1 0 0); /* #ffffff */
+  --secondary: oklch(0.21 0.032 264.7); /* #111827 */
+  --secondary-foreground: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --muted: oklch(0.373 0.031 259.7); /* #374151 */
+  --muted-foreground: oklch(0.714 0.019 261.3); /* #9ca3af */
+  --accent: oklch(0.373 0.031 259.7); /* #374151 */
   --accent-foreground: oklch(0.928 0.006 264.5); /* #e5e7eb */
-  --destructive: oklch(0.637 0.208 25.3);        /* #ef4444 */
-  --border: oklch(0.373 0.031 259.7);            /* #374151 */
-  --input: oklch(0.373 0.031 259.7);             /* #374151 */
-  --ring: oklch(0.492 0.194 259.3);              /* #0058cc */
-  --chart-1: oklch(0.623 0.188 259.8);           /* #3b82f6 */
-  --chart-2: oklch(0.696 0.149 162.5);           /* #10b981 */
-  --chart-3: oklch(0.713 0.148 233.2);           /* #00b0ef */
-  --chart-4: oklch(0.769 0.165 70.1);            /* #f59e0b */
-  --chart-5: oklch(0.637 0.208 25.3);            /* #ef4444 */
-  --sidebar: oklch(0.210 0.032 264.7);           /* #111827 */
-  --sidebar-foreground: oklch(0.928 0.006 264.5);/* #e5e7eb */
-  --sidebar-primary: oklch(0.492 0.194 259.3);   /* #0058cc */
-  --sidebar-primary-foreground: oklch(1 0 0);    /* #ffffff */
-  --sidebar-accent: oklch(0.373 0.031 259.7);    /* #374151 */
-  --sidebar-accent-foreground: oklch(0.928 0.006 264.5);/* #e5e7eb */
-  --sidebar-border: oklch(0.373 0.031 259.7);    /* #374151 */
-  --sidebar-ring: oklch(0.492 0.194 259.3);      /* #0058cc */
+  --destructive: oklch(0.637 0.208 25.3); /* #ef4444 */
+  --border: oklch(0.373 0.031 259.7); /* #374151 */
+  --input: oklch(0.373 0.031 259.7); /* #374151 */
+  --ring: oklch(0.492 0.194 259.3); /* #0058cc */
+  --chart-1: oklch(0.623 0.188 259.8); /* #3b82f6 */
+  --chart-2: oklch(0.696 0.149 162.5); /* #10b981 */
+  --chart-3: oklch(0.713 0.148 233.2); /* #00b0ef */
+  --chart-4: oklch(0.769 0.165 70.1); /* #f59e0b */
+  --chart-5: oklch(0.637 0.208 25.3); /* #ef4444 */
+  --sidebar: oklch(0.21 0.032 264.7); /* #111827 */
+  --sidebar-foreground: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --sidebar-primary: oklch(0.492 0.194 259.3); /* #0058cc */
+  --sidebar-primary-foreground: oklch(1 0 0); /* #ffffff */
+  --sidebar-accent: oklch(0.373 0.031 259.7); /* #374151 */
+  --sidebar-accent-foreground: oklch(0.928 0.006 264.5); /* #e5e7eb */
+  --sidebar-border: oklch(0.373 0.031 259.7); /* #374151 */
+  --sidebar-ring: oklch(0.492 0.194 259.3); /* #0058cc */
 }
 
 @layer base {
@@ -167,14 +166,8 @@
 }
 
 /* Custom styles for SDK components */
-[data-sonner-toaster][data-sonner-theme='dark'] .toast-wrapped-contact-tag {
+[data-sonner-toaster][data-sonner-theme="dark"] .toast-wrapped-contact-tag {
   @apply text-blue-400 hover:text-blue-300;
-}
-
-body {
-  font-family:
-    ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-    'Noto Color Emoji' !important;
 }
 
 /* Safe area insets for mobile status bar / notch / home indicator */

@@ -415,9 +415,7 @@ export function ActivityComposer({
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="activity-location" className="text-muted-foreground text-xs">
-              Location / link
-            </Label>
+            <Label htmlFor="activity-location">Location / link</Label>
             <Input
               id="activity-location"
               value={location}

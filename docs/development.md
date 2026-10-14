@@ -7,8 +7,8 @@ this app are in [chief-of-staff.md](chief-of-staff.md) and
 
 ## Prerequisites
 
-- Node.js 20+ (25.x works; the `dev` script disables Node's experimental web storage)
-- pnpm 10 (`npm install -g pnpm`)
+- Node.js 22+ (26 is what `.tool-versions` pins; the `dev` script disables Node's experimental web storage)
+- pnpm 12 — `corepack enable` installs the version pinned in `package.json`
 - An ibl.ai account — [ibl.ai/join](https://ibl.ai/join) — that belongs to at least one organization
 - For native builds: the Rust toolchain ([rustup](https://rustup.rs)); Xcode for iOS; Android Studio + NDK for Android
 
@@ -81,7 +81,7 @@ components live under `components/crm/<module>/`.
 ## Verify a change
 
 ```bash
-pnpm typecheck && pnpm lint && pnpm test && pnpm build
+pnpm typecheck && pnpm lint && pnpm format:check && pnpm test && pnpm build
 ```
 
 Then open the page you touched and take a screenshot for the PR.

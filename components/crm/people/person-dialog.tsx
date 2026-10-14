@@ -29,7 +29,7 @@ import { LIFECYCLE_LABELS, VOCAB } from "@/lib/recruit/vocabulary";
 const GRAD_YEAR = PROSPECT_FIELDS.find((f) => f.key === "graduation_year");
 const ENTRY_TERM = PROSPECT_FIELDS.find((f) => f.key === "entry_term");
 
-const labelClass = "text-muted-foreground flex items-center gap-1 text-xs";
+const labelClass = "flex items-center gap-1";
 
 /**
  * Create a prospect (a CRM person). Opened from the Prospects list ("New

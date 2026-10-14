@@ -137,7 +137,7 @@ export function TodayBrief({ className }: { className?: string }) {
             href={href("/prospects?new=1")}
             className="inline-flex items-center gap-1 text-[11px] font-medium text-[#0058cc] hover:underline"
           >
-            <UserPlus className="size-3" strokeWidth={1.75} /> Add
+            <UserPlus className="size-3" /> Add
           </Link>
         </div>
         {data.recentPeople.length ? (
@@ -154,10 +154,7 @@ export function TodayBrief({ className }: { className?: string }) {
                       {p.job_title || p.primary_email || "—"}
                     </span>
                   </span>
-                  <ArrowUpRight
-                    className="size-3.5 shrink-0 text-gray-300 group-hover:text-[#0058cc]"
-                    strokeWidth={1.75}
-                  />
+                  <ArrowUpRight className="size-3.5 shrink-0 text-gray-300 group-hover:text-[#0058cc]" />
                 </Link>
               </li>
             ))}

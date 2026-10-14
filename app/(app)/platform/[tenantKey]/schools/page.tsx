@@ -74,7 +74,7 @@ export default function OrganizationsPage() {
   return (
     <>
       <PageHeader
-        icon={<Building2 strokeWidth={1.75} />}
+        icon={<Building2 />}
         title={VOCAB.school.many}
         count={data?.count ?? null}
         description="High schools, community colleges, community organizations, agencies and employers your prospects come from"
@@ -83,7 +83,7 @@ export default function OrganizationsPage() {
             <TooltipTrigger
               render={<Button className="ibl-button-primary" onClick={() => setCreateOpen(true)} />}
             >
-              <Plus data-icon="inline-start" strokeWidth={1.75} /> New {VOCAB.school.lower}
+              <Plus data-icon="inline-start" /> New {VOCAB.school.lower}
             </TooltipTrigger>
             <TooltipContent side="bottom">
               Add a {VOCAB.school.lower} or partner, then attach its {VOCAB.prospect.lowerMany} and
@@ -94,10 +94,7 @@ export default function OrganizationsPage() {
         toolbar={
           <>
             <div className="relative min-w-52 flex-1 sm:max-w-xs">
-              <Search
-                strokeWidth={1.75}
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-gray-400"
-              />
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-gray-400" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -138,7 +135,7 @@ export default function OrganizationsPage() {
         {!isLoading && rows.length === 0 ? (
           hasFilter ? (
             <EmptyState
-              icon={<Building2 strokeWidth={1.75} />}
+              icon={<Building2 />}
               title={`No ${VOCAB.school.lowerMany} match these filters`}
               description={`Try a different name, ${VOCAB.counselor.lower} or tag.`}
               action={
@@ -149,13 +146,12 @@ export default function OrganizationsPage() {
             />
           ) : (
             <EmptyState
-              icon={<Building2 strokeWidth={1.75} />}
+              icon={<Building2 />}
               title={`No ${VOCAB.school.lowerMany} yet`}
               description="Add the high schools, colleges and community partners you recruit from. Prospects link to them, so you can see who is coming from where."
               action={
                 <Button className="ibl-button-primary" onClick={() => setCreateOpen(true)}>
-                  <Plus data-icon="inline-start" strokeWidth={1.75} /> Add your first{" "}
-                  {VOCAB.school.lower}
+                  <Plus data-icon="inline-start" /> Add your first {VOCAB.school.lower}
                 </Button>
               }
             />

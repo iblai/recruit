@@ -75,7 +75,7 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
       <section className="overflow-hidden rounded-2xl border border-[var(--border-color,#e5e7eb)] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
         <div className="bg-gradient-to-br from-[#eef6fc] to-white px-6 py-7">
           <span className="flex size-11 items-center justify-center rounded-2xl bg-white text-[#0058cc] shadow-sm">
-            <Sparkles className="size-5" strokeWidth={1.75} />
+            <Sparkles className="size-5" />
           </span>
           <h2 className="mt-4 text-xl font-semibold tracking-tight text-gray-900">
             Meet your {VOCAB.chiefOfStaff}
@@ -96,8 +96,7 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
           <div className="grid gap-4 px-6 py-5">
             {statusError ? (
               <p className="flex items-start gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />{" "}
-                {statusError}
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {statusError}
               </p>
             ) : null}
             {status ? (
@@ -113,7 +112,7 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
                   the platform uses to call this app&apos;s tools)
                 </Check>
                 <Check
-                  ok={/^https:\/\//.test(status.appUrl) || status.appUrl.includes("localhost")}
+                  ok={status.appUrl.startsWith("https://") || status.appUrl.includes("localhost")}
                 >
                   Public URL the platform will call back on:{" "}
                   <code className="font-mono text-xs">{status.appUrl}/api/mcp/…</code>
@@ -128,9 +127,7 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
               </ul>
             ) : null}
             <div className="grid gap-1.5">
-              <Label htmlFor="institution" className="text-muted-foreground text-xs">
-                Institution name (how the agent refers to you)
-              </Label>
+              <Label htmlFor="institution">Institution name (how the agent refers to you)</Label>
               <Input
                 id="institution"
                 value={institution}
@@ -145,11 +142,7 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
                 disabled={busy || !ready}
                 onClick={() => void run()}
               >
-                {busy ? (
-                  <Spinner data-icon="inline-start" />
-                ) : (
-                  <Wand2 data-icon="inline-start" strokeWidth={1.75} />
-                )}
+                {busy ? <Spinner data-icon="inline-start" /> : <Wand2 data-icon="inline-start" />}
                 Set up the {VOCAB.chiefOfStaff}
               </Button>
               <Button variant="outline" render={<Link href={href("/settings?tab=agent")} />}>
@@ -174,9 +167,9 @@ function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2">
       {ok ? (
-        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" strokeWidth={1.75} />
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
       ) : (
-        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" strokeWidth={1.75} />
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
       )}
       <span className={ok ? "text-gray-700" : "text-gray-900"}>{children}</span>
     </li>

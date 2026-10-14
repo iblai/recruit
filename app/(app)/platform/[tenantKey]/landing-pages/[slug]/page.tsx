@@ -32,7 +32,7 @@ import { LIFECYCLE_LABELS } from "@/lib/recruit/vocabulary";
 
 const CARD =
   "rounded-xl border border-[var(--border-color,#e5e7eb)] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
-const label = "text-muted-foreground flex items-center gap-1 text-xs";
+const label = "flex items-center gap-1";
 
 const lines = (v: string[] | undefined) => (v ?? []).join("\n");
 const unlines = (v: string) =>
@@ -124,12 +124,12 @@ export default function LandingPageEditorPage() {
     return (
       <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
         <EmptyState
-          icon={<Globe strokeWidth={1.75} />}
+          icon={<Globe />}
           title="This landing page no longer exists"
           description="It may have been deleted or renamed."
           action={
             <Button variant="outline" onClick={() => router.push(href("/landing-pages"))}>
-              <ArrowLeft data-icon="inline-start" strokeWidth={1.75} /> Back to landing pages
+              <ArrowLeft data-icon="inline-start" /> Back to landing pages
             </Button>
           }
         />
@@ -174,17 +174,24 @@ export default function LandingPageEditorPage() {
                   />
                 }
               >
-                <Copy data-icon="inline-start" strokeWidth={1.75} /> Copy link
+                <Copy data-icon="inline-start" /> Copy link
               </TooltipTrigger>
               <TooltipContent side="bottom">{url}</TooltipContent>
             </Tooltip>
             <Button
               variant="outline"
               size="sm"
-              render={<a href={url} target="_blank" rel="noreferrer noopener" />}
+              render={
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label="Open the public page"
+                />
+              }
               disabled={!draft.published}
             >
-              <ExternalLink data-icon="inline-start" strokeWidth={1.75} /> Open
+              <ExternalLink data-icon="inline-start" /> Open
             </Button>
             <Button
               size="sm"
@@ -192,11 +199,7 @@ export default function LandingPageEditorPage() {
               onClick={save}
               disabled={!dirty || isSaving || !isAdmin}
             >
-              {isSaving ? (
-                <Spinner data-icon="inline-start" />
-              ) : (
-                <Save data-icon="inline-start" strokeWidth={1.75} />
-              )}
+              {isSaving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
               Save
             </Button>
           </>
@@ -494,7 +497,7 @@ export default function LandingPageEditorPage() {
                         toast.success("Link copied");
                       }}
                     >
-                      <Copy data-icon="inline-start" strokeWidth={1.75} /> Copy
+                      <Copy data-icon="inline-start" /> Copy
                     </Button>
                   </div>
                   <p className="text-muted-foreground text-[11px]">
@@ -504,7 +507,7 @@ export default function LandingPageEditorPage() {
                 </div>
                 <div className="grid gap-1.5">
                   <Label className={label}>
-                    <Code2 className="size-3.5" strokeWidth={1.75} /> Embed on your website
+                    <Code2 className="size-3.5" /> Embed on your website
                   </Label>
                   <Textarea readOnly rows={3} value={embed} className="font-mono text-[11px]" />
                 </div>
@@ -525,7 +528,7 @@ export default function LandingPageEditorPage() {
         <div className="min-w-0 xl:sticky xl:top-0">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
-              <Eye className="size-3.5" strokeWidth={1.75} /> Live preview
+              <Eye className="size-3.5" /> Live preview
             </span>
             <span className="text-muted-foreground text-[11px]">
               Branding from Settings → Branding

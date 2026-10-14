@@ -73,9 +73,7 @@ export function TagDialog({
 
         <div className="grid gap-4 px-4 pb-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="tag-name" className="text-muted-foreground text-xs">
-              Name
-            </Label>
+            <Label htmlFor="tag-name">Name</Label>
             <Input
               id="tag-name"
               value={name}
@@ -96,7 +94,7 @@ export function TagDialog({
           </div>
 
           <div className="grid gap-2">
-            <Label className="text-muted-foreground text-xs">Color</Label>
+            <Label>Color</Label>
             <TagColorSwatches color={color} onChange={setColor} />
           </div>
 

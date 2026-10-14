@@ -1,4 +1,3 @@
-
 name: Build Desktop (Tauri)
 
 on:
@@ -38,7 +37,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .tool-versions
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -115,4 +114,3 @@ jobs:
             src-tauri/target/*/release/bundle/nsis/*.exe
             src-tauri/target/*/release/bundle/msi/*.msi
           if-no-files-found: warn
-

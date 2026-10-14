@@ -170,21 +170,21 @@ Open [http://localhost:3000](http://localhost:3000). You are sent to [login.ibla
 
 New to ibl.ai? [ibl.ai/join](https://ibl.ai/join) creates your account and your organization. `http://localhost:3000` must be an allowed redirect origin of the organization you sign in to.
 
-> **Node.js 25+ note:** the `dev` script sets `NODE_OPTIONS='--no-experimental-webstorage'` so the SDK's browser-storage guards do not collide with Node's experimental `localStorage`. The CLI scripts run through `tsx`.
+Node.js 22+ and pnpm 12 (`corepack enable` picks the pinned version up from `package.json`). The `dev` script sets `NODE_OPTIONS='--no-experimental-webstorage'` so the SDK's browser-storage guards do not collide with Node's `localStorage`; the CLI scripts run through `tsx`.
 
 **Using [Claude Code](https://claude.ai/claude-code) or another coding agent?** Read [`AGENTS.md`](AGENTS.md) first; the [iblai/vibe](https://github.com/iblai/vibe) skills (`npx skills add iblai/vibe --all`) document every platform surface this app uses.
 
 ### Scripts
 
-| Command                                                               | What it does                                                       |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `pnpm dev`                                                            | Dev server on port 3000                                            |
-| `pnpm build` / `pnpm start`                                           | Production build (standalone output) / serve it                    |
-| `pnpm typecheck` · `lint` · `test`                                    | TypeScript · oxlint · Vitest                                       |
-| `pnpm test:e2e`                                                       | Playwright journeys (needs `e2e/.env.development`)                 |
-| `pnpm setup:agent --org <key> --username <admin> --app-url https://…` | Create / re-sync the Chief of Staff headlessly                     |
-| `pnpm seed:demo --org <key>`                                          | Seed a demo recruitment workspace                                  |
-| `pnpm tauri dev` / `build`                                            | Desktop shell (needs Rust); `pnpm tauri ios dev` for the simulator |
+| Command                                                               | What it does                                                                  |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `pnpm dev`                                                            | Dev server on port 3000                                                       |
+| `pnpm build` / `pnpm start`                                           | Production build (standalone output; the regular output on Vercel) / serve it |
+| `pnpm typecheck` · `lint` · `format` · `test`                         | TypeScript 7 · oxlint, zero warnings · oxfmt (`format:check` in CI) · Vitest  |
+| `pnpm test:e2e`                                                       | Playwright journeys (needs `e2e/.env.development`)                            |
+| `pnpm setup:agent --org <key> --username <admin> --app-url https://…` | Create / re-sync the Chief of Staff headlessly                                |
+| `pnpm seed:demo --org <key>`                                          | Seed a demo recruitment workspace                                             |
+| `pnpm tauri dev` / `build`                                            | Desktop shell (needs Rust); `pnpm tauri ios dev` for the simulator            |
 
 ---
 
@@ -216,6 +216,8 @@ ibl.ai/recruit is a front end for the ibl.ai platform plus two server routes tha
 ```bash
 pnpm build && PORT=3000 pnpm start          # or: docker build -t iblai-recruit . && docker run -p 3000:3000 --env-file .env.local iblai-recruit
 ```
+
+On Vercel nothing of this is needed: the project builds the regular Next.js output (`vercel.json` pins the preset) and wants `ENABLE_EXPERIMENTAL_COREPACK=1` so pnpm 12 installs, plus the [Configuration](#configuration) values as project variables — at least `NEXT_PUBLIC_APP_URL` (the public https origin, set before the Chief of Staff setup: the platform calls `/api/mcp/<org>` on it), `NEXT_PUBLIC_MAIN_TENANT_KEY`, `IBLAI_API_KEY` and `RECRUIT_MCP_TOKEN`, and `IBLAI_USERNAME` for headless setup.
 
 Register every origin the app runs on (`http://localhost:3000`, `https://recruit.example.edu`, `iblai-recruit://`) as an allowed redirect origin of the organizations that sign in. Set `NEXT_PUBLIC_APP_URL` to the public https origin **before** running the Chief of Staff setup — the platform must reach `/api/mcp/<org>` over https. Self-hosting the platform itself: [docs/platform-deployment.md](docs/platform-deployment.md).
 

@@ -126,13 +126,12 @@ export default function PersonDetailPage() {
     return (
       <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
         <EmptyState
-          icon={<Users strokeWidth={1.75} />}
+          icon={<Users />}
           title={`This ${VOCAB.prospect.lower} no longer exists`}
           description={`The record may have been deleted or merged into another ${VOCAB.prospect.lower}.`}
           action={
             <Button variant="outline" onClick={() => router.push(href("/prospects"))}>
-              <ArrowLeft data-icon="inline-start" strokeWidth={1.75} /> Back to{" "}
-              {VOCAB.prospect.many}
+              <ArrowLeft data-icon="inline-start" /> Back to {VOCAB.prospect.many}
             </Button>
           }
         />
@@ -186,8 +185,7 @@ export default function PersonDetailPage() {
                         <span className="inline-flex cursor-default items-center gap-1 rounded-full bg-[#eef6fc] px-2 py-0.5 text-[11px] font-medium text-[#0058cc] ring-1 ring-[#0058cc]/20 ring-inset" />
                       }
                     >
-                      <Link2 className="size-3" strokeWidth={1.75} /> Linked to platform user #
-                      {person.platform_user}
+                      <Link2 className="size-3" /> Linked to platform user #{person.platform_user}
                     </TooltipTrigger>
                     <TooltipContent>
                       This {VOCAB.prospect.lower} can sign in to the platform
@@ -218,7 +216,7 @@ export default function PersonDetailPage() {
                 <TooltipTrigger
                   render={<Button variant="outline" onClick={() => setInviteOpen(true)} />}
                 >
-                  <UserPlus data-icon="inline-start" strokeWidth={1.75} /> Invite to platform
+                  <UserPlus data-icon="inline-start" /> Invite to platform
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   Emails an ibl.ai invitation; the {VOCAB.prospect.lower} becomes a platform user
@@ -230,7 +228,7 @@ export default function PersonDetailPage() {
                   render={<Button variant="outline" nativeButton={false} disabled />}
                   aria-label={`Invite to platform — ${inviteHint}`}
                 >
-                  <UserPlus data-icon="inline-start" strokeWidth={1.75} /> Invite to platform
+                  <UserPlus data-icon="inline-start" /> Invite to platform
                 </TooltipTrigger>
                 <TooltipContent>{inviteHint}</TooltipContent>
               </Tooltip>
@@ -244,7 +242,7 @@ export default function PersonDetailPage() {
                     />
                   }
                 >
-                  <MoreHorizontal strokeWidth={1.75} />
+                  <MoreHorizontal />
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   Link to a user, merge duplicates, delete
@@ -252,14 +250,14 @@ export default function PersonDetailPage() {
               </Tooltip>
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => setLinkOpen(true)}>
-                  <Link2 strokeWidth={1.75} /> Link to user
+                  <Link2 /> Link to user
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setMergeOpen(true)}>
-                  <Merge strokeWidth={1.75} /> Merge duplicates
+                  <Merge /> Merge duplicates
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={() => setConfirmDelete(true)}>
-                  <Trash2 strokeWidth={1.75} /> Delete {VOCAB.prospect.lower}
+                  <Trash2 /> Delete {VOCAB.prospect.lower}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

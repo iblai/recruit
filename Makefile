@@ -3,7 +3,7 @@
 dev: ; pnpm dev
 build: ; pnpm build
 start: ; pnpm start
-check: ; pnpm typecheck && pnpm lint && pnpm test
+check: ; pnpm typecheck && pnpm lint && pnpm format:check && pnpm test
 test: ; pnpm test
 e2e: ; pnpm test:e2e
 e2e-ui: ; pnpm test:e2e:ui

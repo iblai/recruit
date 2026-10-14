@@ -59,13 +59,7 @@ export function DealsTable({
         <TableHeader>
           <TableRow className="bg-gray-50/70 hover:bg-gray-50/70">
             {HEAD.map((h) => (
-              <TableHead
-                key={h}
-                className={cn(
-                  "text-muted-foreground text-[11px] font-semibold tracking-wide uppercase",
-                  h === "Est. tuition" && "text-right",
-                )}
-              >
+              <TableHead key={h} className={h === "Est. tuition" ? "text-right" : undefined}>
                 {h}
               </TableHead>
             ))}

@@ -50,7 +50,7 @@ export function mergeRecruitSettings(
 ): OrgMetadata {
   const root: OrgMetadata =
     metadata && typeof metadata === "object" ? { ...(metadata as OrgMetadata) } : {};
-  const apps = { ...((root.apps as Record<string, unknown> | undefined) ?? {}) };
+  const apps = { ...(root.apps as Record<string, unknown> | undefined) };
   const mine: RecruitSettings = { ...readRecruitSettings(root), ...patch };
   for (const k of remove) delete mine[k];
   apps[APP_SLUG] = mine;

@@ -127,13 +127,13 @@ export function ChiefOfStaffTab() {
     <div className="grid gap-4 xl:grid-cols-2">
       <section className={CARD}>
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-          <Sparkles className="size-4 text-[#0058cc]" strokeWidth={1.75} /> The agent
+          <Sparkles className="size-4 text-[#0058cc]" /> The agent
         </h3>
         <dl className="mt-3 divide-y divide-gray-100 text-sm">
           <Row label="Status">
             {agentId ? (
               <span className="inline-flex items-center gap-1.5 text-emerald-700">
-                <CheckCircle2 className="size-4" strokeWidth={1.75} /> Set up
+                <CheckCircle2 className="size-4" /> Set up
                 {settings.setupCompletedAt ? (
                   <span className="text-muted-foreground">
                     {" "}
@@ -143,7 +143,7 @@ export function ChiefOfStaffTab() {
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5 text-amber-700">
-                <AlertTriangle className="size-4" strokeWidth={1.75} /> Not set up yet
+                <AlertTriangle className="size-4" /> Not set up yet
               </span>
             )}
           </Row>
@@ -179,7 +179,14 @@ export function ChiefOfStaffTab() {
             <Button
               variant="outline"
               size="sm"
-              render={<a href={osAgentUrl} target="_blank" rel="noreferrer noopener" />}
+              render={
+                <a
+                  href={osAgentUrl}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  aria-label="Tune in the Agentic OS"
+                />
+              }
             >
               Tune in the Agentic OS <ExternalLink data-icon="inline-end" />
             </Button>
@@ -201,11 +208,11 @@ export function ChiefOfStaffTab() {
 
       <section className={CARD}>
         <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-          <Wand2 className="size-4 text-[#0058cc]" strokeWidth={1.75} /> Set up or re-sync
+          <Wand2 className="size-4 text-[#0058cc]" /> Set up or re-sync
         </h3>
         {statusError ? (
           <p className="mt-3 flex items-start gap-2 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            <AlertTriangle className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} /> {statusError}
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" /> {statusError}
           </p>
         ) : null}
         {status ? (
@@ -217,9 +224,9 @@ export function ChiefOfStaffTab() {
             <Check ok={status.mcpTokenSet}>
               <code className="font-mono text-xs">RECRUIT_MCP_TOKEN</code> is set on the server
             </Check>
-            <Check ok={/^https:\/\//.test(status.appUrl)}>
+            <Check ok={status.appUrl.startsWith("https://")}>
               Public URL: <code className="font-mono text-xs">{status.appUrl}</code>
-              {!/^https:\/\//.test(status.appUrl) ? (
+              {!status.appUrl.startsWith("https://") ? (
                 <span className="text-muted-foreground">
                   {" "}
                   — the platform must reach this app over https; set NEXT_PUBLIC_APP_URL in
@@ -232,7 +239,7 @@ export function ChiefOfStaffTab() {
           <p className="text-muted-foreground mt-3 text-sm">Checking the server…</p>
         ) : null}
         <div className="mt-4 grid gap-1.5">
-          <Label htmlFor="cos-institution" className="text-muted-foreground text-xs">
+          <Label htmlFor="cos-institution">
             Institution name (used in the agent&apos;s prompt and on landing pages)
           </Label>
           <Input
@@ -253,9 +260,9 @@ export function ChiefOfStaffTab() {
             {busy ? (
               <Spinner data-icon="inline-start" />
             ) : agentId ? (
-              <RefreshCw data-icon="inline-start" strokeWidth={1.75} />
+              <RefreshCw data-icon="inline-start" />
             ) : (
-              <Wand2 data-icon="inline-start" strokeWidth={1.75} />
+              <Wand2 data-icon="inline-start" />
             )}
             {agentId ? "Re-sync the agent" : `Set up the ${VOCAB.chiefOfStaff}`}
           </Button>
@@ -301,9 +308,9 @@ export function ChiefOfStaffTab() {
         <Table>
           <TableHeader>
             <TableRow className="bg-[#fafbfc]">
-              <TableHead className="text-muted-foreground text-xs">Tool</TableHead>
-              <TableHead className="text-muted-foreground text-xs">What it does</TableHead>
-              <TableHead className="text-muted-foreground text-xs">Kind</TableHead>
+              <TableHead>Tool</TableHead>
+              <TableHead>What it does</TableHead>
+              <TableHead>Kind</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -346,9 +353,9 @@ function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2">
       {ok ? (
-        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" strokeWidth={1.75} />
+        <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
       ) : (
-        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" strokeWidth={1.75} />
+        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
       )}
       <span className={ok ? "text-gray-700" : "text-gray-900"}>{children}</span>
     </li>

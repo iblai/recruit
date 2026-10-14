@@ -39,6 +39,11 @@ import config from "@/lib/iblai/config";
 import { readCurrentTenantKey, readUsername, resolveDefaultTenant } from "@/lib/iblai/tenant";
 import { redirectToAuthSpa, handleTenantSwitch, LOCAL_STORAGE_KEYS } from "@/lib/iblai/auth-utils";
 
+// The SDK logs the session tokens with console.log; production keeps warnings and errors only.
+if (process.env.NODE_ENV === "production" && typeof window !== "undefined") {
+  console.log = console.info = console.debug = () => {};
+}
+
 const storageService = LocalStorageService.getInstance();
 
 /** Routes that do NOT require authentication (`false` = public). */
@@ -101,10 +106,11 @@ function Providers({ children }: { children: ReactNode }) {
   // sign-in or sign-out. On localhost cookies are shared by every dev server on
   // the machine regardless of port, so another app's session would be read as
   // "logged out elsewhere" and force a logout loop — keep the sync for real
-  // hosts only.
+  // hosts only, and off on the shared vibe zone (*.iblai.me), where the parent
+  // domain's cookies belong to unrelated apps.
   const enableStorageSync =
     typeof window !== "undefined" &&
-    !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+    !/^(localhost|127\.0\.0\.1|\[::1\])$|\.iblai\.me$/.test(window.location.hostname);
 
   const LOADING = <LoadingScreen />;
   if (!isInitialized || !mounted) return LOADING;

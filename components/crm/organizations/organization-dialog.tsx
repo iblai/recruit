@@ -29,7 +29,7 @@ import { VOCAB } from "@/lib/recruit/vocabulary";
 
 const EMPTY = { street: "", city: "", state: "", postal_code: "", country: "" };
 
-const labelClass = "text-muted-foreground flex items-center gap-1 text-xs";
+const labelClass = "flex items-center gap-1";
 
 /**
  * Create a school or partner (a CRM organization) — the high school, college,

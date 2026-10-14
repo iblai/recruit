@@ -73,9 +73,7 @@ export function TagColorSwatches({
         ))}
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="tag-hex" className="text-muted-foreground text-xs">
-          Custom hex
-        </Label>
+        <Label htmlFor="tag-hex">Custom hex</Label>
         <Input
           id="tag-hex"
           value={hex}

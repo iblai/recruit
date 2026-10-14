@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useDealLookups } from "@/components/crm/deals/use-lookups";
 import { useListActivitiesQuery, useListAllDealsQuery } from "@/lib/crm/api";
 import { dealValue, sortStages, toDate, weightedValue } from "@/lib/crm/format";
@@ -49,6 +49,8 @@ export function useDashboardData() {
 
   const rows = useMemo(() => deals ?? [], [deals]);
   const openDeals = useMemo(() => rows.filter((d) => d.status === "open"), [rows]);
+  // One clock per mount; the memos read it instead of calling Date during render.
+  const [now] = useState(() => new Date());
 
   const stats = useMemo(() => {
     const currency = dominantCurrency(rows.length ? rows : []);
@@ -57,7 +59,6 @@ export function useDashboardData() {
       (sum, d) => sum + weightedValue(d, lookups.stageById.get(d.stage)),
       0,
     );
-    const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const wonThisMonth = rows.filter((d) => {
       if (d.status !== "won") return false;
@@ -72,7 +73,7 @@ export function useDashboardData() {
       wonCount: wonThisMonth.length,
       wonValue: wonThisMonth.reduce((sum, d) => sum + dealValue(d), 0),
     };
-  }, [rows, openDeals, lookups.stageById]);
+  }, [rows, openDeals, lookups.stageById, now]);
 
   const upcoming = useMemo(() => {
     const open = (activities?.results ?? []).filter((a) => !a.is_done);
@@ -97,13 +98,12 @@ export function useDashboardData() {
 
   /** Prospects created since the first of this month — the month's inquiries. */
   const inquiriesThisMonth = useMemo(() => {
-    const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     return lookups.persons.filter((p) => {
       const created = toDate(p.created_at);
       return !!created && created >= monthStart;
     }).length;
-  }, [lookups.persons]);
+  }, [lookups.persons, now]);
 
   const recentPeople = useMemo(
     () =>
@@ -135,7 +135,6 @@ export function useDashboardData() {
   }, [lookups.defaultPipeline, openDeals]);
 
   const wonLostByMonth = useMemo(() => {
-    const now = new Date();
     const buckets: {
       key: string;
       label: string;
@@ -171,7 +170,7 @@ export function useDashboardData() {
       }
     }
     return buckets;
-  }, [rows]);
+  }, [rows, now]);
 
   return {
     lookups,

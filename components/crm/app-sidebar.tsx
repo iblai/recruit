@@ -35,8 +35,7 @@ import { useAdminMode } from "@/components/crm/admin-mode";
 import { useCommandPalette } from "@/components/crm/command-palette";
 import { useSession } from "@/hooks/use-session";
 import config from "@/lib/iblai/config";
-import { isUnnamedTenant, tenantDisplayName } from "@/lib/iblai/tenant";
-import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
+import { tenantDisplayName } from "@/lib/iblai/tenant";
 import type { IblaiRootState } from "@/store/iblai-store";
 import { cn } from "@/lib/utils";
 
@@ -76,11 +75,6 @@ export function AppSidebar() {
   const { adminMode } = useAdminMode();
   const { open: openPalette } = useCommandPalette();
   const rbacPermissions = useSelector((s: IblaiRootState) => selectRbacPermissions(s));
-  const { branding } = useRecruitSettings();
-  const orgName =
-    !currentTenant || isUnnamedTenant(currentTenant)
-      ? branding.name
-      : tenantDisplayName(currentTenant);
   const [sheet, setSheet] = useState<PlatformAccountTab | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -285,7 +279,7 @@ function RecruitNav({
           ⌘K
         </kbd>
       </button>
-      <ul className="flex flex-col gap-0.5 pt-1" role="list">
+      <ul className="flex flex-col gap-0.5 pt-1">
         {items.map((item) => {
           const active = isActive(item);
           return (

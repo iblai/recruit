@@ -11,7 +11,14 @@
 import { applicationTitle, coerceMeta, PROSPECT_FIELDS, type Metadata } from "./fields";
 
 export type FormFieldType =
-  "text" | "email" | "tel" | "number" | "date" | "select" | "textarea" | "checkbox";
+  | "text"
+  | "email"
+  | "tel"
+  | "number"
+  | "date"
+  | "select"
+  | "textarea"
+  | "checkbox";
 
 /**
  * Where a submitted answer lands. Everything else goes into

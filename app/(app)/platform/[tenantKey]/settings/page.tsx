@@ -70,19 +70,19 @@ function SettingsView() {
         <Tabs value={tab} onValueChange={(value) => setTab(value as TabValue)} className="gap-4">
           <TabsList variant="line" className="h-9 border-b border-gray-200 pb-1">
             <TabsTrigger value="agent">
-              <Sparkles strokeWidth={1.75} /> {VOCAB.chiefOfStaff}
+              <Sparkles /> {VOCAB.chiefOfStaff}
             </TabsTrigger>
             <TabsTrigger value="pipelines">
-              <Filter strokeWidth={1.75} /> Funnels
+              <Filter /> Funnels
             </TabsTrigger>
             <TabsTrigger value="sources">
-              <Radio strokeWidth={1.75} /> Sources
+              <Radio /> Sources
             </TabsTrigger>
             <TabsTrigger value="branding">
-              <Palette strokeWidth={1.75} /> Branding
+              <Palette /> Branding
             </TabsTrigger>
             <TabsTrigger value="about">
-              <Info strokeWidth={1.75} /> About
+              <Info /> About
             </TabsTrigger>
           </TabsList>
 

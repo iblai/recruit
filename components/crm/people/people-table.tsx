@@ -19,7 +19,12 @@ import { cn } from "@/lib/utils";
  * `owner`) plus `graduation_year`, which lives in `person.metadata`.
  */
 export type PersonColumn =
-  "organization" | "job_title" | "graduation_year" | "owner" | "tags" | "created";
+  | "organization"
+  | "job_title"
+  | "graduation_year"
+  | "owner"
+  | "tags"
+  | "created";
 
 const ALL_COLUMNS: PersonColumn[] = [
   "organization",

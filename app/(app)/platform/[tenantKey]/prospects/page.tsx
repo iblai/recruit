@@ -90,7 +90,7 @@ export default function PeoplePage() {
   return (
     <>
       <PageHeader
-        icon={<Users strokeWidth={1.75} />}
+        icon={<Users />}
         title={VOCAB.prospect.many}
         count={data?.count ?? null}
         description="The students and families you are recruiting, plus your contacts at partner schools"
@@ -99,7 +99,7 @@ export default function PeoplePage() {
             <TooltipTrigger
               render={<Button className="ibl-button-primary" onClick={() => setCreateOpen(true)} />}
             >
-              <Plus data-icon="inline-start" strokeWidth={1.75} /> New {VOCAB.prospect.lower}
+              <Plus data-icon="inline-start" /> New {VOCAB.prospect.lower}
             </TooltipTrigger>
             <TooltipContent side="bottom">
               Add a {VOCAB.prospect.lower} — {VOCAB.application.lowerMany} and activities hang off
@@ -110,10 +110,7 @@ export default function PeoplePage() {
         toolbar={
           <>
             <div className="relative min-w-52 flex-1 sm:max-w-xs">
-              <Search
-                strokeWidth={1.75}
-                className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-gray-400"
-              />
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-gray-400" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -177,7 +174,7 @@ export default function PeoplePage() {
         {showEmptyState ? (
           hasServerFilter ? (
             <EmptyState
-              icon={<Users strokeWidth={1.75} />}
+              icon={<Users />}
               title={`No ${VOCAB.prospect.lowerMany} match these filters`}
               description={`Try a different stage, ${VOCAB.counselor.lower} or tag.`}
               action={
@@ -188,20 +185,19 @@ export default function PeoplePage() {
             />
           ) : (
             <EmptyState
-              icon={<Users strokeWidth={1.75} />}
+              icon={<Users />}
               title={`No ${VOCAB.prospect.lowerMany} yet`}
               description={`${VOCAB.prospect.many} are the students and families you are recruiting — ${VOCAB.application.lowerMany} and activities hang off them. Start with the one you are talking to today.`}
               action={
                 <Button className="ibl-button-primary" onClick={() => setCreateOpen(true)}>
-                  <Plus data-icon="inline-start" strokeWidth={1.75} /> Add your first{" "}
-                  {VOCAB.prospect.lower}
+                  <Plus data-icon="inline-start" /> Add your first {VOCAB.prospect.lower}
                 </Button>
               }
             />
           )
         ) : noMatches ? (
           <EmptyState
-            icon={<Search strokeWidth={1.75} />}
+            icon={<Search />}
             title={`Nothing on this page matches “${search.trim()}”`}
             description={`Search only looks at the ${VOCAB.prospect.lowerMany} loaded on this page. Try another page or clear the search.`}
             action={

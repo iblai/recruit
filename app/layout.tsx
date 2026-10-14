@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { Open_Sans } from "next/font/google";
 import "./globals.css";
 
 // The proxy's nonce-based CSP requires per-request rendering.
 export const dynamic = "force-dynamic";
+
+const openSans = Open_Sans({ subsets: ["latin"], variable: "--font-open-sans" });
 
 export const metadata: Metadata = {
   title: {
@@ -31,7 +34,7 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={`${openSans.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );
