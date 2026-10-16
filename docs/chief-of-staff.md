@@ -11,10 +11,10 @@ server** the agent calls to read and change the CRM.
 member ─► <Chat> (SDK, in-process) ─► ibl.ai agent runtime (LLM, memory, guardrails, analytics)
                                             │ decides to use a tool
                                             ▼
-                               POST https://<app>/api/mcp/<org>      Authorization: Bearer <RECRUIT_MCP_TOKEN>
+                               POST https://<app>/api/mcp/<org>      Authorization: Bearer <recruit-tools key>
                                             │ JSON-RPC: tools/list · tools/call
                                             ▼
-                               lib/mcp/tools.ts ─► CrmServer (Api-Token for <org>) ─► …/dm/api/crm/…
+                               lib/mcp/tools.ts ─► CrmServer (Api-Token <same key>) ─► …/dm/api/crm/…
 ```
 
 - `lib/mcp/protocol.ts` — a dependency-free MCP server over the Streamable
@@ -24,22 +24,19 @@ member ─► <Chat> (SDK, in-process) ─► ibl.ai agent runtime (LLM, memory,
   description (what the model reads), a JSON-Schema `inputSchema`,
   `annotations` (`readOnlyHint` for reads) and a handler over `CrmServer`.
   Funnels and stages are referenced by stable `code`s. Nothing deletes or merges.
-- `app/api/mcp/[tenantKey]/route.ts` — the endpoint. It checks the bearer
-  secret in constant time, refuses when the server holds no Platform API Token
-  for the org, and hands every tool a `ToolContext` bound to that org.
+- `app/api/mcp/[tenantKey]/route.ts` — the endpoint. The bearer the platform
+  presents is the `recruit-tools` key setup minted; every tool forwards it as
+  `Api-Token`, so the platform authorizes each call and the key's own
+  organization bounds it. No bearer → 401; at most 10 messages per request.
 - `lib/recruit/agent.ts` — the agent's identity (`AGENT_NAME`,
   `systemPrompt()`, `SUGGESTED_PROMPTS`) and `setupChiefOfStaff()`.
 
 ## Setup
 
 **In the app:** an org admin opens _Settings → Chief of Staff_ and clicks
-**Set up**. The route `POST /api/admin/agent` verifies the caller is an admin
-of the org (session token → `verifyCaller` → `isOrgAdmin`) and runs the
-procedure with the org's Platform API Token.
-
-**Headless:** `pnpm setup:agent --org <key> --username <admin> --app-url https://recruit.example.edu [--institution "Northfield University"]`
-(reads `IBLAI_API_KEY` / `TOKEN`, `RECRUIT_MCP_TOKEN`, `NEXT_PUBLIC_APP_URL`
-from `.env.local` / `iblai.env`).
+**Set up**. The route `POST /api/admin/agent` verifies the caller's session
+(`verifyCaller`) and runs the procedure as them, so the platform refuses
+anyone who does not administer the org.
 
 The procedure is idempotent (`setupChiefOfStaff`):
 
@@ -50,20 +47,45 @@ The procedure is idempotent (`setupChiefOfStaff`):
 4. Find the MCP server record whose URL is `<appUrl>/api/mcp/<org>`, or
    register one (`transport: streamable_http`, `auth_type: token`,
    `auth_scope: platform`).
-5. Find the platform-scoped connection for that server, or create it with
-   `credentials: RECRUIT_MCP_TOKEN`, `authorization_scheme: Bearer`; on re-runs
-   the credential is rotated to the current secret.
+5. Mint the tools' key — `DELETE /api/core/platform/api-tokens/recruit-tools?platform_key=<org>`
+   (no trailing slash; 404 is fine), look up the platform's **CRM User**
+   policy (`GET /api/core/rbac/policies/?name=CRM%20User`, exact name), and
+   `POST /api/core/platform/api-tokens/` `{ name: "recruit-tools", platform_key,
+   mode: "token_policies", policies_to_add: [<id>] }`. A probe
+   (`GET /api/crm/pipelines/?page_size=1` with the key) confirms the CRM takes
+   it; where it does not (RBAC off), or there is no such policy, the key is
+   replaced by an owner-mode one (`{ name, platform_key }`). The key goes into
+   the server's platform-scoped connection (`credentials: <key>`,
+   `authorization_scheme: Bearer`), creating the connection if needed. It is
+   never logged and the app keeps no copy; re-runs rotate it.
 6. **Merge** `mcp-tool` into the agent's `tool_slugs` and the server id into
    `mcp_servers` (those lists are replaced on write — never send them blindly).
 7. Add the suggested prompts that are missing.
-8. Save `agentId`, `mcpServerId`, `setupCompletedAt`, `institutionName` under
-   `apps.recruit` in the org's metadata (GET → merge → PUT).
+8. Save `agentId`, `mcpServerId`, `toolsAccess` (`crm-user` or `owner`),
+   `setupCompletedAt`, `institutionName` under `apps.recruit` in the org's
+   metadata (GET → merge → PUT).
 
-Prerequisites the Settings tab checks for you: a Platform API Token for the
-org on the server (`IBLAI_API_KEY` or an `IBLAI_API_KEYS` entry),
-`RECRUIT_MCP_TOKEN` set (≥ 16 chars; use `openssl rand -hex 32`), and a public
-**https** `NEXT_PUBLIC_APP_URL` the platform can reach (the agent runtime
-calls your deployment; `localhost` works only for the UI, not for tools).
+The one prerequisite, checked by the Settings tab: a public **https**
+`NEXT_PUBLIC_APP_URL` the platform can reach (the agent runtime calls your
+deployment; `localhost` works only for the UI, not for tools).
+
+## Whose authority the tools carry
+
+Where the platform enforces RBAC, every tool call acts with the **CRM User**
+role: `recruit-tools` is a `token_policies` key holding that policy only, so
+it reaches the CRM (prospects, schools, applications, activities, tags,
+landing pages, the member list) and nothing else on the platform. Where RBAC
+is off the CRM takes no scoped key, and the tools act as the admin who last
+ran setup (an owner-mode key); _Settings → Chief of Staff_ says which. Either
+way the agent runtime never forwards the chatting member's own credential. An
+owner key fails once its admin loses admin rights or leaves the organization,
+until another admin re-runs setup. The key never expires; to retire the Chief
+of Staff, delete `recruit-tools` in OS → Admin → Integrations → APIs.
+
+**Upgrading from a version with `RECRUIT_MCP_TOKEN`:** tools answer 401 until
+an admin re-runs setup once. Then remove `IBLAI_API_KEY`, `IBLAI_API_KEYS`,
+`IBLAI_USERNAME` and `RECRUIT_MCP_TOKEN` from the deployment and revoke the
+old key in the OS (it never expires).
 
 ## Tuning
 
@@ -90,20 +112,21 @@ wins over the org's metadata.
 
 ## Troubleshooting
 
-| Symptom                                  | Likely cause                                                                                                                                                               |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Home shows the setup card for everyone   | No `apps.recruit.agentId` in the org's metadata — run setup as an admin                                                                                                    |
-| "Set up" button disabled                 | Server lacks `IBLAI_API_KEY`/`IBLAI_API_KEYS` for the org, or `RECRUIT_MCP_TOKEN` is unset                                                                                 |
-| Agent answers but never uses tools       | `mcp-tool` missing from `tool_slugs` or the server id missing from `mcp_servers` — re-run setup                                                                            |
-| Chat shows a 503 "warning" about tools   | The platform cannot reach `<appUrl>/api/mcp/<org>` (not https, firewall) or the bearer secret differs — check `NEXT_PUBLIC_APP_URL`, re-run setup to rotate the credential |
-| `401` from `/api/mcp/<org>` in your logs | Bearer token mismatch — the platform holds an old secret; re-run setup                                                                                                     |
-| `503` from `/api/mcp/<org>`              | No Platform API Token on the server for that org                                                                                                                           |
-| Tools work in one org, not another       | Multi-institution deployment: add the org to `IBLAI_API_KEYS`                                                                                                              |
+| Symptom                                      | Likely cause                                                                                                                    |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Home shows the setup card for everyone       | No `apps.recruit.agentId` in the org's metadata — run setup as an admin                                                         |
+| "Set up" button disabled                     | You are not an admin of this organization, or the status could not load                                                         |
+| Agent answers but never uses tools           | `mcp-tool` missing from `tool_slugs` or the server id missing from `mcp_servers` — re-run setup                                 |
+| Chat shows a warning about tools             | The platform cannot reach `<appUrl>/api/mcp/<org>` (not https, firewall) — check `NEXT_PUBLIC_APP_URL` and re-run setup         |
+| `401` from `/api/mcp/<org>` in your logs     | The call carried no bearer — the connection holds no key; re-run setup                                                          |
+| Tools answer "Platform request failed (401)" | The key was deleted, its admin left the organization, or this deployment still holds the old `RECRUIT_MCP_TOKEN` — re-run setup |
+| Tools answer "Platform request failed (403)" | The admin who ran setup lost admin rights, or the platform's CRM User policy lost a permission — another admin re-runs setup    |
 
-Smoke-test the endpoint without the platform:
+Smoke-test the endpoint without the platform (`$TOKEN` is any Platform API
+Token of that organization; a `tools/call` acts with what the key may do):
 
 ```bash
 curl -s -X POST "$NEXT_PUBLIC_APP_URL/api/mcp/<org>" \
-  -H "Authorization: Bearer $RECRUIT_MCP_TOKEN" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools | length'
 ```

@@ -7,14 +7,19 @@
  *
  * Endpoints follow the vibe skills `iblai-api-agent-create`,
  * `iblai-api-agent-prompt`, `iblai-api-agent-mcp` and `iblai-api-org`.
- * Server-only (uses the org's Platform API Token). Relative imports on
+ * Server-only (acts with the admin's session). Relative imports on
  * purpose: vitest and the CLI resolve no `@/` alias.
  */
 import { platformFetch as rawPlatformFetch, PlatformError } from "../iblai/platform";
 import { mergeRecruitSettings, readRecruitSettings, type RecruitSettings } from "./org-settings";
+import { invalidateOrgMetadata } from "./settings-server";
 import { RECRUIT_TOOLS } from "../mcp/tools";
 
 export const AGENT_NAME = "Chief of Staff";
+/** The Platform API Token setup mints for the tools (names are unique per platform). */
+const TOOLS_KEY = "recruit-tools";
+/** The platform's policy the tools' key is scoped to where RBAC is on. */
+const TOOLS_POLICY = "CRM User";
 export const AGENT_DESCRIPTION =
   "Your recruitment team's chief of staff: knows every prospect, school and application, keeps the funnel moving, drafts outreach, and briefs you every morning.";
 
@@ -41,7 +46,7 @@ export function systemPrompt(institutionName = "the university"): string {
 - Funnels and stages are referenced by stable codes from list_funnels — look them up instead of guessing. Lifecycle stages of a prospect are Inquiry → Engaged → Applicant → Enrolled (or Withdrawn).
 - Before creating a prospect, search for them by email or name so you do not create duplicates. If you find a likely duplicate, say so instead of creating another record.
 - Write actions (create, update, move, mark_enrolled, mark_withdrawn, log_activity, tag_record, create_landing_page) are real and visible to the whole team. Do them when the request is clear. When a request is ambiguous (which funnel? which program? which of two matching prospects?), ask one short question first. Never mark an application withdrawn without a reason.
-- Landing pages you create stay unpublished until a human reviews them, unless the user explicitly asks to publish.
+- Landing pages you create stay unpublished until a human reviews them, unless the user explicitly asks to publish. Every submission to a published page arrives as a prospect (and an application when the page opens one), tagged and with a note of the answers; list_landing_pages counts them.
 - When you draft emails or texts: warm, specific, short, in the institution's voice, with one clear next step. Offer to log the outreach as an activity once it is sent.
 - Be concise. Lead with the answer or the number, then the detail. Use short bullet lists for more than two items. Use dates like "Thu Oct 16", never raw ISO strings, unless the user asks for data exports.
 - Student data is sensitive (FERPA). Only discuss records with the signed-in team; never invent facts about a student; do not speculate about protected characteristics; when asked for something you cannot see in the CRM, say so.
@@ -57,25 +62,24 @@ export interface SetupInput {
   username: string;
   /** Public origin of this app, e.g. https://recruit.example.edu */
   appUrl: string;
-  /** Shared secret the platform presents to /api/mcp/<org>. */
-  mcpToken: string;
+  /** The org admin's session (`Token …`); the platform enforces their rights. */
+  authorization: string;
   institutionName?: string;
-  /**
-   * Act as a signed-in org admin (`Authorization: Token …`) instead of the
-   * server's Platform API Token — lets an admin create the agent before the
-   * server holds a key. The tool server itself still needs the key at runtime.
-   */
-  sessionToken?: string;
   log?: (line: string) => void;
 }
 
 export interface SetupResult {
   agentId: string;
-  /** `null` when tools were not wired (no https app URL or no MCP secret yet). */
+  /** `null` when tools were not wired (no https app URL). */
   mcpServerId: number | null;
   toolsWired: boolean;
+  /** What the tools' key may do; `null` when tools were not wired. */
+  toolsAccess: ToolsAccess | null;
   created: { agent: boolean; mcpServer: boolean; connection: boolean };
 }
+
+type ToolsAccess = NonNullable<RecruitSettings["toolsAccess"]>;
+type Fetch = <T>(path: string, init?: Parameters<typeof rawPlatformFetch>[2]) => Promise<T>;
 
 type MentorSettings = {
   unique_id?: string;
@@ -88,6 +92,68 @@ type MentorSettings = {
 
 const enc = encodeURIComponent;
 
+/** 401/403: the platform refused this credential here. */
+const refused = (e: unknown) =>
+  e instanceof PlatformError && (e.status === 401 || e.status === 403);
+
+/**
+ * Mint the tools' key, replacing the previous one. Scoped to the platform's
+ * CRM User policy where RBAC is on; with no such policy, or where RBAC is off
+ * (the CRM refuses scoped keys there), an owner key acting as the admin.
+ */
+async function mintToolsKey(
+  platformFetch: Fetch,
+  org: string,
+): Promise<{ key: string; access: ToolsAccess }> {
+  // The detail route has no trailing slash.
+  const tokens = "/dm/api/core/platform/api-tokens/";
+  const drop = async () => {
+    try {
+      await platformFetch(`${tokens}${TOOLS_KEY}?platform_key=${enc(org)}`, { method: "DELETE" });
+    } catch (e) {
+      if (!(e instanceof PlatformError && e.status === 404)) throw e;
+    }
+  };
+  const mint = (body: Record<string, unknown>) =>
+    platformFetch<{ key?: string }>(tokens, {
+      method: "POST",
+      body: { name: TOOLS_KEY, platform_key: org, ...body },
+    });
+
+  await drop();
+  type Policy = { id: number; name: string };
+  const policies = await platformFetch<{ results?: Policy[] } | Policy[]>(
+    `/dm/api/core/rbac/policies/?name=${enc(TOOLS_POLICY)}&include_users=false&include_groups=false`,
+  ).catch((e) => {
+    if (e instanceof PlatformError && e.status < 500) return [];
+    throw e;
+  });
+  // `?name=` matches substrings.
+  const policy = (Array.isArray(policies) ? policies : (policies.results ?? [])).find(
+    (p) => p.name === TOOLS_POLICY,
+  );
+  if (policy) {
+    const scoped = await mint({ mode: "token_policies", policies_to_add: [policy.id] }).catch(
+      (e) => {
+        if (e instanceof PlatformError && e.status < 500) return null;
+        throw e;
+      },
+    );
+    if (scoped?.key) {
+      try {
+        await rawPlatformFetch("/dm/api/crm/pipelines/?page_size=1", `Api-Token ${scoped.key}`);
+        return { key: scoped.key, access: "crm-user" };
+      } catch (e) {
+        if (!refused(e)) throw e;
+      }
+      await drop();
+    }
+  }
+  const owner = await mint({});
+  if (!owner?.key) throw new Error("The platform did not return the tools' API key");
+  return { key: owner.key, access: "owner" };
+}
+
 /**
  * Create (or re-sync) the Chief of Staff for an organization. Safe to run
  * repeatedly: an existing agent id in the org's metadata is reused, the
@@ -99,16 +165,14 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
   const { org, username, log = () => {} } = input;
   const appUrl = input.appUrl.replace(/\/+$/, "");
   if (!/^https?:\/\//.test(appUrl)) throw new Error("appUrl must be an absolute http(s) origin");
-  const canWireTools =
-    appUrl.startsWith("https://") && !!input.mcpToken && input.mcpToken.length >= 16;
-  const auth = input.sessionToken ? { Authorization: `Token ${input.sessionToken}` } : undefined;
-  const platformFetch = <T>(path: string, init: Parameters<typeof rawPlatformFetch>[1] = {}) =>
-    rawPlatformFetch<T>(path, { ...init, headers: { ...auth, ...init.headers } });
+  const canWireTools = appUrl.startsWith("https://");
+  const platformFetch = <T>(path: string, init: Parameters<typeof rawPlatformFetch>[2] = {}) =>
+    rawPlatformFetch<T>(path, input.authorization, init);
   const mentorBase = `/dm/api/ai-mentor/orgs/${enc(org)}/users/${enc(username)}`;
   const metaPath = `/dm/api/core/orgs/${enc(org)}/metadata/`;
 
   // 0. Current settings.
-  const metaRes = await platformFetch<{ metadata?: Record<string, unknown> }>(metaPath, { org });
+  const metaRes = await platformFetch<{ metadata?: Record<string, unknown> }>(metaPath);
   const metadata = metaRes?.metadata ?? {};
   const settings: RecruitSettings = readRecruitSettings(metadata);
   const created = { agent: false, mcpServer: false, connection: false };
@@ -117,7 +181,7 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
   let agentId = settings.agentId ?? "";
   if (agentId) {
     try {
-      await platformFetch(`${mentorBase}/mentors/${enc(agentId)}/settings/`, { org });
+      await platformFetch(`${mentorBase}/mentors/${enc(agentId)}/settings/`);
       log(`Agent ${agentId} exists — reusing it.`);
     } catch (e) {
       if (e instanceof PlatformError && e.status === 404) {
@@ -130,7 +194,6 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
     const agent = await platformFetch<{ unique_id: string }>(
       `${mentorBase}/mentor-with-settings/`,
       {
-        org,
         method: "POST",
         body: {
           template_name: "ai-mentor",
@@ -148,30 +211,26 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
 
   // 2. Prompt + greeting (send only the changed keys).
   await platformFetch(`${mentorBase}/mentors/${enc(agentId)}/settings/`, {
-    org,
     method: "PUT",
     body: { system_prompt: systemPrompt(input.institutionName) },
   });
   await platformFetch(`${mentorBase}/mentors/${enc(agentId)}/settings/`, {
-    org,
     method: "PUT",
     body: { description: AGENT_DESCRIPTION },
   }).catch(() => undefined);
 
   // 3–5. The tool server — only once the platform can actually reach it.
   let serverId: number | null = null;
+  let toolsAccess: ToolsAccess | null = null;
   if (!canWireTools) {
     log(
-      appUrl.startsWith("https://")
-        ? "Tools not wired: RECRUIT_MCP_TOKEN is not set (≥ 16 chars). Re-run setup after setting it."
-        : `Tools not wired: ${appUrl} is not an https origin the platform can call. Set NEXT_PUBLIC_APP_URL and re-run setup.`,
+      `Tools not wired: ${appUrl} is not an https origin the platform can call. Set NEXT_PUBLIC_APP_URL and re-run setup.`,
     );
   } else {
     const serverUrl = `${appUrl}/api/mcp/${enc(org)}`;
     type McpServerRow = { id: number; url?: string; name?: string };
     const existing = await platformFetch<{ results?: McpServerRow[] } | McpServerRow[]>(
       `${mentorBase}/mcp-servers/?page_size=100&search=${enc("ibl.ai/recruit")}`,
-      { org },
     );
     const rows = Array.isArray(existing) ? existing : (existing?.results ?? []);
     let server =
@@ -179,7 +238,6 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
       (settings.mcpServerId ? rows.find((r) => r.id === settings.mcpServerId) : undefined);
     if (server && server.url !== serverUrl) {
       await platformFetch(`${mentorBase}/mcp-servers/${server.id}/`, {
-        org,
         method: "PATCH",
         body: { url: serverUrl },
       });
@@ -187,7 +245,6 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
     }
     if (!server) {
       server = await platformFetch<McpServerRow>(`${mentorBase}/mcp-servers/`, {
-        org,
         method: "POST",
         body: {
           name: "ibl.ai/recruit tools",
@@ -206,11 +263,10 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
       log(`Registered MCP server ${server.id} at ${serverUrl}.`);
     }
 
-    // 4. The platform-scoped connection carrying the shared secret.
+    // 4. The platform-scoped connection carrying the tools' key.
     type ConnRow = { id: number; server?: number | { id: number }; scope?: string };
     const conns = await platformFetch<{ results?: ConnRow[] } | ConnRow[]>(
       `${mentorBase}/mcp-server-connections/?page_size=100`,
-      { org },
     );
     const connRows = Array.isArray(conns) ? conns : (conns?.results ?? []);
     serverId = server.id;
@@ -219,23 +275,28 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
         (typeof c.server === "object" ? c.server?.id : c.server) === serverId &&
         (c.scope ?? "platform") === "platform",
     );
+    // Minted right before the write.
+    const minted = await mintToolsKey(platformFetch, org);
+    toolsAccess = minted.access;
+    log(
+      minted.access === "crm-user"
+        ? `Minted the tools' API key "${TOOLS_KEY}" with the ${TOOLS_POLICY} role.`
+        : `Minted the tools' API key "${TOOLS_KEY}" (it acts as ${username}: this platform does not scope keys by role).`,
+    );
     if (conn) {
-      // Rotate the secret so the platform always holds the current token.
       await platformFetch(`${mentorBase}/mcp-server-connections/${conn.id}/`, {
-        org,
         method: "PATCH",
-        body: { credentials: input.mcpToken, authorization_scheme: "Bearer", is_active: true },
+        body: { credentials: minted.key, authorization_scheme: "Bearer", is_active: true },
       });
       log(`Refreshed connection ${conn.id}.`);
     } else {
       await platformFetch(`${mentorBase}/mcp-server-connections/`, {
-        org,
         method: "POST",
         body: {
           server: serverId,
           scope: "platform",
           auth_type: "token",
-          credentials: input.mcpToken,
+          credentials: minted.key,
           authorization_scheme: "Bearer",
         },
       });
@@ -246,7 +307,6 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
     // 5. Wire the server onto the agent — merge, never replace.
     const current = await platformFetch<MentorSettings>(
       `${mentorBase}/mentors/${enc(agentId)}/settings/`,
-      { org },
     );
     const toolSlugs = new Set<string>(Array.isArray(current.tool_slugs) ? current.tool_slugs : []);
     toolSlugs.add("mcp-tool");
@@ -257,7 +317,6 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
     );
     mcpIds.add(serverId);
     await platformFetch(`${mentorBase}/mentors/${enc(agentId)}/settings/`, {
-      org,
       method: "PUT",
       body: { tool_slugs: [...toolSlugs], mcp_servers: [...mcpIds], can_use_tools: true },
     });
@@ -270,13 +329,11 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
       { results?: Array<{ prompt: string }> } | Array<{ prompt: string }>
     >(
       `/dm/api/search/orgs/${enc(org)}/users/${enc(username)}/prompts/?mentor=${enc(agentId)}&limit=50`,
-      { org },
     );
     const have = new Set((Array.isArray(list) ? list : (list?.results ?? [])).map((p) => p.prompt));
     for (const prompt of SUGGESTED_PROMPTS) {
       if (have.has(prompt)) continue;
       await platformFetch(`/dm/api/ai-prompt/orgs/${enc(org)}/users/${enc(username)}/prompt/`, {
-        org,
         method: "POST",
         body: { prompt, category: "Recruitment", is_system: false, mentor: agentId, platform: org },
       });
@@ -287,15 +344,17 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
   }
 
   // 7. Remember the ids where every member's app can read them.
-  const latest = await platformFetch<{ metadata?: Record<string, unknown> }>(metaPath, { org });
+  const latest = await platformFetch<{ metadata?: Record<string, unknown> }>(metaPath);
   const merged = mergeRecruitSettings(latest?.metadata ?? {}, {
     agentId,
     ...(serverId !== null && { mcpServerId: serverId }),
+    ...(toolsAccess && { toolsAccess }),
     setupCompletedAt: new Date().toISOString(),
     ...(input.institutionName && { institutionName: input.institutionName }),
   });
-  await platformFetch(metaPath, { org, method: "PUT", body: { metadata: merged } });
+  await platformFetch(metaPath, { method: "PUT", body: { metadata: merged } });
+  invalidateOrgMetadata(org);
   log("Saved the agent id to the organization's metadata.");
 
-  return { agentId, mcpServerId: serverId, toolsWired: serverId !== null, created };
+  return { agentId, mcpServerId: serverId, toolsWired: serverId !== null, toolsAccess, created };
 }

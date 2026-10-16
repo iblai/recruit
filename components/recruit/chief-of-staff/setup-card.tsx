@@ -18,8 +18,6 @@ type Status = {
   pinnedByEnv: boolean;
   mcpServerId: number | null;
   setupCompletedAt: string | null;
-  serverHasKey: boolean;
-  mcpTokenSet: boolean;
   appUrl: string;
   username: string;
 };
@@ -67,7 +65,7 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
     }
   };
 
-  // Creating the agent only needs a signed-in admin; the key and secret gate the tools.
+  // Setup runs as the signed-in admin; the platform refuses anyone else.
   const ready = !!status;
 
   return (
@@ -101,16 +99,6 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
             ) : null}
             {status ? (
               <ul className="grid gap-1.5 text-sm">
-                <Check ok={status.serverHasKey}>
-                  The server holds a Platform API Token for{" "}
-                  <code className="font-mono text-xs">{tenantKey}</code> (
-                  <code className="font-mono text-xs">IBLAI_API_KEY</code> or{" "}
-                  <code className="font-mono text-xs">IBLAI_API_KEYS</code>)
-                </Check>
-                <Check ok={status.mcpTokenSet}>
-                  <code className="font-mono text-xs">RECRUIT_MCP_TOKEN</code> is set (the secret
-                  the platform uses to call this app&apos;s tools)
-                </Check>
                 <Check
                   ok={status.appUrl.startsWith("https://") || status.appUrl.includes("localhost")}
                 >

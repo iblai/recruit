@@ -16,6 +16,9 @@ import type {
   ActivityInput,
   ActivityListParams,
   CrmApiError,
+  CrmMember,
+  CrmOverview,
+  CrmSearch,
   Deal,
   DealInput,
   DealListParams,
@@ -42,6 +45,9 @@ import type {
   TagAttachResponse,
   TagInput,
   TagListParams,
+  WebForm,
+  WebFormInput,
+  WebFormSubmission,
 } from "./types";
 
 export const CRM_TAG_TYPES = [
@@ -52,6 +58,7 @@ export const CRM_TAG_TYPES = [
   "Deal",
   "Activity",
   "Tag",
+  "WebForm",
 ] as const;
 
 type TagType = (typeof CRM_TAG_TYPES)[number];
@@ -60,6 +67,22 @@ const LIST = "LIST";
 
 function listTags<T extends { id: string | number }>(type: TagType, results?: T[]) {
   return [{ type, id: LIST }, ...(results ?? []).map((r) => ({ type, id: r.id }))];
+}
+
+/** The first message in a DRF error value: a string, a list, or nested documents. */
+function firstMessage(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && value.every((v) => typeof v === "string")) return value.join(" ");
+  const items = Array.isArray(value)
+    ? value
+    : value && typeof value === "object"
+      ? Object.values(value)
+      : [];
+  for (const item of items) {
+    const message = firstMessage(item);
+    if (message) return message;
+  }
+  return "";
 }
 
 /** Strip undefined / empty params so the URL only carries real filters. */
@@ -99,13 +122,9 @@ const baseQuery: typeof rawBaseQuery = async (args, api, extra) => {
       else if (typeof d.message === "string") detail = d.message;
       else if (typeof d.error === "string") detail = d.error;
       else {
-        // DRF field errors: { field: ["msg"] }
+        // DRF field errors: { field: ["msg"] }, nested for JSON documents.
         const first = Object.entries(d)[0];
-        if (first) {
-          const [field, msgs] = first;
-          const msg = Array.isArray(msgs) ? msgs.join(" ") : String(msgs);
-          detail = `${field}: ${msg}`;
-        }
+        if (first) detail = `${first[0]}: ${firstMessage(first[1]) || String(first[1])}`;
       }
     } else if (result.error.status === "FETCH_ERROR") {
       detail = "Network error — check your connection.";
@@ -498,6 +517,111 @@ export const crmApi = createApi({
         { type: "Deal", id: LIST },
       ],
     }),
+
+    // ------------------------------------------------- Metadata, search, overview
+    /** RFC 7386 merge into one record's `metadata`: `null` removes a key. */
+    patchMetadata: builder.mutation<
+      unknown,
+      {
+        kind: "persons" | "organizations" | "deals";
+        id: string | number;
+        patch: Record<string, unknown>;
+      }
+    >({
+      query: ({ kind, id, patch }) => ({
+        url: `/${kind}/${id}/metadata/`,
+        method: "PATCH",
+        body: patch,
+      }),
+      invalidatesTags: (_r, _e, { kind, id }) => {
+        const type = ({ persons: "Person", organizations: "Organization", deals: "Deal" } as const)[
+          kind
+        ];
+        return [
+          { type, id },
+          { type, id: LIST },
+        ];
+      },
+    }),
+    search: builder.query<CrmSearch, { q: string; limit?: number }>({
+      query: (params) => ({ url: "/search/", params: cleanParams(params) }),
+      providesTags: [
+        { type: "Person", id: LIST },
+        { type: "Organization", id: LIST },
+        { type: "Deal", id: LIST },
+      ],
+    }),
+    getOverview: builder.query<CrmOverview, { pipeline?: number } | void>({
+      query: (params) => ({ url: "/overview/", params: cleanParams(params ?? undefined) }),
+      providesTags: [
+        { type: "Person", id: LIST },
+        { type: "Organization", id: LIST },
+        { type: "Deal", id: LIST },
+        { type: "Activity", id: LIST },
+      ],
+    }),
+
+    // ------------------------------------------------------------- Members
+    /** Every active member of the organization — walks the pages (owner pickers). */
+    listMembers: builder.query<CrmMember[], void>({
+      async queryFn(_arg, _api, _extra, fetchWithBQ) {
+        const all: CrmMember[] = [];
+        let page = 1;
+        for (let i = 0; i < 20; i++) {
+          const res = await fetchWithBQ({
+            url: "/members/",
+            params: { page, page_size: 100 },
+          } as FetchArgs);
+          if (res.error) return { error: res.error };
+          const data = res.data as Paginated<CrmMember>;
+          all.push(...data.results);
+          if (!data.next_page) break;
+          page = data.next_page;
+        }
+        return { data: all };
+      },
+    }),
+
+    // ----------------------------------------------------------- Web forms
+    listWebForms: builder.query<Paginated<WebForm>, void>({
+      query: () => ({ url: "/web-forms/", params: { page_size: 100 } }),
+      providesTags: (res) => [
+        { type: "WebForm", id: LIST },
+        ...(res?.results ?? []).map((f) => ({ type: "WebForm" as const, id: f.slug })),
+      ],
+    }),
+    getWebForm: builder.query<WebForm, string>({
+      query: (slug) => `/web-forms/${encodeURIComponent(slug)}/`,
+      providesTags: (_r, _e, slug) => [{ type: "WebForm", id: slug }],
+    }),
+    createWebForm: builder.mutation<WebForm, WebFormInput>({
+      query: (body) => ({ url: "/web-forms/", method: "POST", body }),
+      invalidatesTags: [{ type: "WebForm", id: LIST }],
+    }),
+    updateWebForm: builder.mutation<WebForm, { slug: string; body: WebFormInput }>({
+      query: ({ slug, body }) => ({
+        url: `/web-forms/${encodeURIComponent(slug)}/`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (_r, _e, { slug }) => [
+        { type: "WebForm", id: slug },
+        { type: "WebForm", id: LIST },
+      ],
+    }),
+    deleteWebForm: builder.mutation<void, string>({
+      query: (slug) => ({ url: `/web-forms/${encodeURIComponent(slug)}/`, method: "DELETE" }),
+      invalidatesTags: [{ type: "WebForm", id: LIST }],
+    }),
+    listWebFormSubmissions: builder.query<
+      Paginated<WebFormSubmission>,
+      { slug: string; page?: number; page_size?: number }
+    >({
+      query: ({ slug, ...params }) => ({
+        url: `/web-forms/${encodeURIComponent(slug)}/submissions/`,
+        params: cleanParams(params),
+      }),
+    }),
   }),
 });
 
@@ -556,6 +680,16 @@ export const {
   useCreateTagMutation,
   useUpdateTagMutation,
   useDeleteTagMutation,
+  usePatchMetadataMutation,
+  useSearchQuery,
+  useGetOverviewQuery,
+  useListMembersQuery,
+  useListWebFormsQuery,
+  useGetWebFormQuery,
+  useCreateWebFormMutation,
+  useUpdateWebFormMutation,
+  useDeleteWebFormMutation,
+  useListWebFormSubmissionsQuery,
 } = crmApi;
 
 /** Read the normalized error message off an RTK Query error. */

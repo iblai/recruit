@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useDashboardData } from "@/components/crm/dashboard/use-dashboard-data";
 import { UpNextList } from "@/components/crm/dashboard/up-next-list";
 import { useSession } from "@/hooks/use-session";
-import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
+import { useLandingPages } from "@/lib/recruit/use-landing-pages";
 import { pluralize } from "@/lib/crm/format";
 import { VOCAB } from "@/lib/recruit/vocabulary";
 import { cn } from "@/lib/utils";
@@ -19,8 +19,8 @@ import { cn } from "@/lib/utils";
 export function TodayBrief({ className }: { className?: string }) {
   const { href } = useSession();
   const data = useDashboardData();
-  const { settings } = useRecruitSettings();
-  const published = (settings.landingPages ?? []).filter((p) => p.published).length;
+  const { pages } = useLandingPages();
+  const published = pages.filter((p) => p.published).length;
 
   return (
     <div className={cn("flex flex-col gap-4 p-4", className)}>
@@ -28,7 +28,7 @@ export function TodayBrief({ className }: { className?: string }) {
         <h2 className="text-muted-foreground text-[11px] font-semibold tracking-wide uppercase">
           Today
         </h2>
-        {data.isLoading && data.deals.length === 0 ? (
+        {data.isLoading ? (
           <div className="mt-2 grid grid-cols-2 gap-2">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-16 rounded-lg" />

@@ -5,12 +5,15 @@
  *
  *   pnpm seed:demo --org <org-key> [--term "Fall 2027"] [--app-url https://…]
  *
+ * It asks for the credential to act with (an org admin's Platform API key, or
+ * `Token <session token>`) and keeps it nowhere.
+ *
  * Idempotent-ish: funnel, sources, tags and schools are found or created;
  * prospects are matched by email so a re-run does not duplicate them.
  */
-import { bootstrap, argValue } from "./_env";
+import { askAuthorization, bootstrap, argValue } from "./_env";
 import { CrmServer } from "../lib/recruit/crm-server";
-import { newLandingPage, landingPageUrl } from "../lib/recruit/landing-pages";
+import { newLandingPage, landingPageUrl, toWebForm } from "../lib/recruit/landing-pages";
 import { applicationTitle } from "../lib/recruit/fields";
 import { readRecruitSettingsServer, writeRecruitSettings } from "../lib/recruit/settings-server";
 
@@ -21,7 +24,6 @@ const appUrl = (
   process.env.NEXT_PUBLIC_APP_URL ??
   "http://localhost:3000"
 ).replace(/\/+$/, "");
-const crm = new CrmServer(org);
 const log = (s: string) => console.log(`  • ${s}`);
 
 const STAGES = [
@@ -184,6 +186,8 @@ const PROSPECTS = [
 ];
 
 async function main() {
+  const authorization = await askAuthorization();
+  const crm = new CrmServer(org, authorization);
   console.log(`\nSeeding a demo recruitment workspace into "${org}" (${term})\n`);
 
   // Funnel
@@ -193,7 +197,8 @@ async function main() {
     funnel = await crm.createPipeline({
       name: `Admissions ${term}`,
       code: "admissions",
-      is_default: true,
+      // The platform allows one default; the landing page names this funnel by code.
+      is_default: !pipelines.some((p) => p.is_default),
       rotten_days: 14,
     });
     log(`Created funnel "${funnel.name}"`);
@@ -303,9 +308,8 @@ async function main() {
   }
 
   // Landing page
-  const settings = await readRecruitSettingsServer(org);
-  const pages = settings.landingPages ?? [];
-  if (!pages.some((p) => p.slug === "request-information")) {
+  const forms = await crm.listWebForms();
+  if (!forms.some((f) => f.slug === "request-information")) {
     const page = newLandingPage({
       title: "Request information",
       slug: "request-information",
@@ -317,12 +321,12 @@ async function main() {
       tags: ["Web inquiry"],
       published: true,
     });
-    await writeRecruitSettings(org, {
-      landingPages: [...pages, page],
-      institutionName: settings.institutionName ?? "Northfield University",
-    });
+    await crm.createWebForm(toWebForm(page));
     log(`Published landing page ${landingPageUrl(appUrl, org, page.slug)}`);
   } else log("Landing page exists");
+  const settings = await readRecruitSettingsServer(org);
+  if (!settings.institutionName)
+    await writeRecruitSettings(org, { institutionName: "Northfield University" }, authorization);
 
   console.log("\n✓ Done. Open the app and ask the Chief of Staff for today's brief.\n");
 }

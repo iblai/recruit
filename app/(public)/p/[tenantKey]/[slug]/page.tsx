@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
 import { LandingPageView } from "@/components/landing/landing-page-view";
-import { newLandingPage, type LandingPage } from "@/lib/recruit/landing-pages";
+import { fromPublicWebForm, newLandingPage, type LandingPage } from "@/lib/recruit/landing-pages";
 import { institutionBranding } from "@/lib/recruit/org-settings";
-import { readOrgMetadata } from "@/lib/recruit/settings-server";
-import { readRecruitSettings } from "@/lib/recruit/org-settings";
+import { readOrgMetadata, readPublicWebForm } from "@/lib/recruit/settings-server";
 
 /**
  * `/p/<org>/<slug>` — a published landing page, server-rendered from the
- * organization's public metadata. No session, no SDK bundle. Unpublished or
- * unknown pages show a neutral "not available" state (never a hint about
- * what exists).
+ * platform's public read of the web form, branded from the organization's
+ * public metadata. No session, no SDK bundle. Unpublished or unknown pages
+ * show a neutral "not available" state (never a hint about what exists).
  */
 export const dynamic = "force-dynamic";
 
@@ -31,10 +30,12 @@ async function load(params: Params) {
       },
     };
   }
-  const metadata = await readOrgMetadata(org);
-  const settings = readRecruitSettings(metadata);
-  const page = (settings.landingPages ?? []).find((p) => p.slug === slug && p.published);
-  return { org, page, branding: institutionBranding(metadata, org) };
+  const [form, metadata] = await Promise.all([readPublicWebForm(org, slug), readOrgMetadata(org)]);
+  return {
+    org,
+    page: form ? fromPublicWebForm(form) : undefined,
+    branding: institutionBranding(metadata, org),
+  };
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {

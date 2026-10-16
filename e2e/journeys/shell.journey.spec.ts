@@ -31,7 +31,10 @@ test.describe("shell journey", () => {
           timeout: 15_000,
         },
       );
-      await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible({
+      // The page title carries its record count ("Applications 1").
+      await expect(
+        page.getByRole("heading", { name: new RegExp(`^${heading}( \\d+)?$`) }),
+      ).toBeVisible({
         timeout: 15_000,
       });
     }
@@ -43,7 +46,7 @@ test.describe("shell journey", () => {
     await expect(page.getByPlaceholder(/search prospects, schools, applications/i)).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByText("New prospect")).toBeVisible();
+    await expect(page.getByRole("option", { name: "New prospect" })).toBeVisible();
     await page.keyboard.press("Escape");
   });
 

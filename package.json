@@ -24,7 +24,6 @@
     "tauri:android:init": "tauri android init",
     "tauri:android:dev": "tauri android dev",
     "screenshots": "node scripts/screenshots.mjs",
-    "setup:agent": "tsx scripts/setup-agent.ts",
     "seed:demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {

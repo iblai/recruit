@@ -10,7 +10,9 @@ test.describe("auth journey", () => {
   test("A1 · an authenticated user lands on their organization's home", async ({ page }) => {
     await page.goto(appHost);
     await page.waitForURL((url) => /\/platform\/[^/]+/.test(url.pathname), { timeout: 30_000 });
-    await expect(page.getByRole("heading", { name: "Home" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole("heading", { name: "Chief of Staff" })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 
   test("A2 · auth tokens and the organization list are stored in localStorage", async ({

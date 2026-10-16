@@ -35,8 +35,6 @@ type Status = {
   pinnedByEnv: boolean;
   mcpServerId: number | null;
   setupCompletedAt: string | null;
-  serverHasKey: boolean;
-  mcpTokenSet: boolean;
   appUrl: string;
   username: string;
 };
@@ -49,7 +47,7 @@ const CARD =
  * re-sync, the agent's id, where to tune it in the OS, and the tools it holds.
  */
 export function ChiefOfStaffTab() {
-  const { tenantKey } = useSession();
+  const { tenantKey, isAdmin } = useSession();
   const { settings, branding, agentId, refetch, update, isSaving } = useRecruitSettings();
   const [status, setStatus] = useState<Status | null>(null);
   const [statusError, setStatusError] = useState("");
@@ -117,7 +115,7 @@ export function ChiefOfStaffTab() {
     }
   };
 
-  // Creating the agent only needs a signed-in admin; the key and secret gate the tools.
+  // Setup runs as the signed-in admin; the platform refuses anyone else.
   const ready = !!status;
   const osAgentUrl = agentId
     ? `${config.osUrl()}/platform/${encodeURIComponent(tenantKey)}/${encodeURIComponent(agentId)}`
@@ -217,13 +215,6 @@ export function ChiefOfStaffTab() {
         ) : null}
         {status ? (
           <ul className="mt-3 grid gap-1.5 text-sm">
-            <Check ok={status.serverHasKey}>
-              Server holds a Platform API Token for{" "}
-              <code className="font-mono text-xs">{tenantKey}</code>
-            </Check>
-            <Check ok={status.mcpTokenSet}>
-              <code className="font-mono text-xs">RECRUIT_MCP_TOKEN</code> is set on the server
-            </Check>
             <Check ok={status.appUrl.startsWith("https://")}>
               Public URL: <code className="font-mono text-xs">{status.appUrl}</code>
               {!status.appUrl.startsWith("https://") ? (
@@ -254,7 +245,7 @@ export function ChiefOfStaffTab() {
           <Button
             className="ibl-button-primary"
             size="sm"
-            disabled={busy || !ready}
+            disabled={busy || !ready || !isAdmin}
             onClick={() => void run()}
           >
             {busy ? (
@@ -301,8 +292,10 @@ export function ChiefOfStaffTab() {
         <div className="border-b border-gray-100 px-4 py-3">
           <h3 className="text-sm font-semibold text-gray-900">What the agent can do</h3>
           <p className="text-muted-foreground mt-0.5 text-xs">
-            Every tool acts with this organization&apos;s authority against the same records the app
-            shows. None of them deletes or merges anything.
+            {settings.toolsAccess === "crm-user"
+              ? "Every tool acts with the CRM User role"
+              : "Every tool acts as the admin who last ran setup"}
+            , against the same records the app shows. None of them deletes or merges anything.
           </p>
         </div>
         <Table>

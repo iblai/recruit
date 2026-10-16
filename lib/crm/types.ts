@@ -50,6 +50,8 @@ export interface Person {
   contact_numbers?: string[];
   job_title?: string;
   organization?: string | null;
+  /** The organization's name (read-only). */
+  organization_name?: string | null;
   owner?: number | null;
   platform_user: number | null;
   lifecycle_stage?: LifecycleStage;
@@ -165,7 +167,11 @@ export interface Deal {
   expected_close_date?: string | null;
   closed_at: string | null;
   person: string;
+  /** The person's name (read-only). */
+  person_name?: string;
   organization?: string | null;
+  /** The organization's name (read-only). */
+  organization_name?: string | null;
   pipeline: number;
   stage: number;
   source?: number | null;
@@ -284,9 +290,15 @@ export interface TagAttachResponse {
 export interface ListParams {
   page?: number;
   page_size?: number;
+  /** A field name, `-` first for descending (`-created_at`). */
+  ordering?: string;
 }
 
 export interface PersonListParams extends ListParams {
+  /** Exact email, ignoring case. */
+  primary_email?: string;
+  /** Name, email, job title or unique id contains every word. */
+  search?: string;
   lifecycle_stage?: LifecycleStage;
   owner?: number;
   organization?: string;
@@ -298,6 +310,8 @@ export interface PersonListParams extends ListParams {
 
 export interface OrganizationListParams extends ListParams {
   name?: string;
+  /** Exact name, ignoring case. */
+  name__iexact?: string;
   owner?: number;
   tags?: string;
 }
@@ -331,6 +345,8 @@ export interface ActivityListParams extends ListParams {
 
 export interface TagListParams extends ListParams {
   name?: string;
+  /** Exact name, ignoring case. */
+  name__iexact?: string;
   created_at__gte?: string;
   created_at__lte?: string;
 }
@@ -353,10 +369,165 @@ export interface CrmApiError {
   data?: unknown;
 }
 
-/** A platform user, as listed by the org's member directory (for owner pickers). */
+/** A platform member, as `/members/` lists them (for owner pickers). */
 export interface PlatformMember {
   id: number;
   username: string;
-  email?: string;
+  /** Null unless the caller may list the platform's users. */
+  email?: string | null;
   name?: string;
+  is_admin?: boolean;
+}
+
+/** `/members/` row: `id` is the user id `owner` takes. */
+export interface CrmMember {
+  id: number;
+  username: string | null;
+  name: string;
+  email: string | null;
+  is_admin: boolean;
+}
+
+export type WebFormFieldType =
+  | "text"
+  | "email"
+  | "tel"
+  | "number"
+  | "date"
+  | "select"
+  | "textarea"
+  | "checkbox";
+
+/** One question of a web form. `maps_to` names where its answer is written. */
+export interface WebFormField {
+  key: string;
+  label: string;
+  type: WebFormFieldType;
+  required: boolean;
+  placeholder: string;
+  help: string;
+  options: string[];
+  maps_to: string[];
+}
+
+/** Where a submission lands; stored with every key present. */
+export interface WebFormRouting {
+  create_deal: boolean;
+  pipeline_code: string;
+  stage_code: string;
+  lead_source_code: string;
+  tags: string[];
+  owner: number | null;
+  lifecycle_stage: LifecycleStage;
+  deal_title: string;
+  deal_metadata: Record<string, string>;
+}
+
+export interface WebForm {
+  id: number;
+  platform: number;
+  slug: string;
+  name: string;
+  is_published: boolean;
+  fields: WebFormField[];
+  routing: WebFormRouting;
+  /** The app's page copy, served on the public read. */
+  metadata: Record<string, unknown>;
+  success_title: string;
+  success_message: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WebFormInput = Partial<
+  Pick<
+    WebForm,
+    | "slug"
+    | "name"
+    | "is_published"
+    | "fields"
+    | "routing"
+    | "metadata"
+    | "success_title"
+    | "success_message"
+  >
+>;
+
+/** A published form as `GET /orgs/<org>/web-forms/<slug>/` serves it: no routing, no targets. */
+export interface PublicWebForm {
+  slug: string;
+  name: string;
+  metadata: Record<string, unknown>;
+  fields: Omit<WebFormField, "maps_to">[];
+  success_title: string;
+  success_message: string;
+}
+
+export interface WebFormSubmission {
+  id: string;
+  person: string | null;
+  deal: number | null;
+  answers: Record<string, unknown>;
+  utm: Record<string, string>;
+  page_url: string;
+  created_at: string;
+}
+
+/** `GET /search/?q=`: one bucket per resource the caller may list. */
+export interface CrmSearch {
+  q: string;
+  persons?: Pick<
+    Person,
+    "id" | "name" | "primary_email" | "job_title" | "organization" | "lifecycle_stage"
+  >[];
+  organizations?: Pick<Organization, "id" | "name">[];
+  deals?: Pick<
+    Deal,
+    | "id"
+    | "title"
+    | "status"
+    | "lead_value"
+    | "currency"
+    | "person"
+    | "organization"
+    | "pipeline"
+    | "stage"
+  >[];
+}
+
+export interface CrmOverviewStage {
+  stage: PipelineStage;
+  count: number;
+  /** Decimal strings. */
+  total_value: string;
+  weighted_value: string;
+}
+
+export interface CrmOverviewMonth {
+  /** `YYYY-MM`, UTC. */
+  month: string;
+  won_count: number;
+  won_value: string;
+  lost_count: number;
+  lost_value: string;
+}
+
+/** `GET /overview/`: the sections the caller may list. Money is decimal strings. */
+export interface CrmOverview {
+  persons?: { count: number };
+  organizations?: { count: number };
+  deals?: {
+    pipeline: Pipeline | null;
+    currency: string | null;
+    open_count: number;
+    pipeline_value: string;
+    weighted_value: string;
+    won_this_month_count: number;
+    won_this_month_value: string;
+    lost_this_month_count: number;
+    lost_this_month_value: string;
+    by_stage: CrmOverviewStage[];
+    won_lost_by_month: CrmOverviewMonth[];
+  };
+  activities?: { open_count: number; due_today: number; overdue: number };
 }

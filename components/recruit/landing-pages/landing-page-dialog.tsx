@@ -21,8 +21,9 @@ import { SimpleSelect } from "@/components/crm/simple-select";
 import { useDealLookups, openStages } from "@/components/crm/deals/use-lookups";
 import { useSession } from "@/hooks/use-session";
 import { entryTerms } from "@/lib/recruit/fields";
+import { errorMessage } from "@/lib/crm/api";
 import { newLandingPage, slugify, SLUG_RE } from "@/lib/recruit/landing-pages";
-import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
+import { useLandingPages } from "@/lib/recruit/use-landing-pages";
 
 /** Create a landing page with the standard inquiry form; refine it in the editor. */
 export function LandingPageDialog({
@@ -35,7 +36,7 @@ export function LandingPageDialog({
   const router = useRouter();
   const { href } = useSession();
   const titleRef = useRef<HTMLInputElement>(null);
-  const { settings, update, isSaving } = useRecruitSettings();
+  const { pages, loaded, create, isSaving } = useLandingPages();
   const lookups = useDealLookups({ skip: !open });
 
   const [title, setTitle] = useState("");
@@ -63,8 +64,8 @@ export function LandingPageDialog({
 
   const pipeline = lookups.pipelines.find((p) => p.code === pipelineCode);
   const stages = openStages(pipeline);
-  const taken = (settings.landingPages ?? []).some((p) => p.slug === slug);
-  const valid = title.trim().length > 0 && SLUG_RE.test(slug) && !taken;
+  const taken = pages.some((p) => p.slug === slug);
+  const valid = loaded && title.trim().length > 0 && SLUG_RE.test(slug) && !taken;
 
   const submit = async () => {
     if (!valid) return;
@@ -73,17 +74,17 @@ export function LandingPageDialog({
       slug,
       program: program.trim(),
       term,
-      pipelineCode: pipelineCode || "default",
+      pipelineCode,
       stageCode,
       headline: title.trim(),
     });
     try {
-      await update({ landingPages: [...(settings.landingPages ?? []), page] });
+      await create(page);
       toast.success("Landing page created — it is a draft until you publish it");
       onOpenChange(false);
       router.push(href(`/landing-pages/${encodeURIComponent(page.slug)}`));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not create the page");
+      toast.error(errorMessage(e, "Could not create the page"));
     }
   };
 

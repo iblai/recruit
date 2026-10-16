@@ -45,7 +45,7 @@ export function RecentDealsList({
   personName,
 }: {
   deals: Deal[];
-  personName: (id?: string | null) => string;
+  personName: (id?: string | null, known?: string | null) => string;
 }) {
   const { href } = useSession();
   if (deals.length === 0) {
@@ -63,7 +63,7 @@ export function RecentDealsList({
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-gray-900">{d.title}</span>
               <span className="text-muted-foreground block truncate text-xs">
-                {personName(d.person)} · added {formatRelative(d.created_at)}
+                {personName(d.person, d.person_name)} · added {formatRelative(d.created_at)}
               </span>
             </span>
             <span className="shrink-0 text-right">

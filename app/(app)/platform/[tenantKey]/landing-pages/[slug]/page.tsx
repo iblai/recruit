@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Code2, Copy, ExternalLink, Eye, Globe, Save } from "lucide-react";
@@ -24,9 +24,11 @@ import { openStages, useDealLookups } from "@/components/crm/deals/use-lookups";
 import { LandingPageView } from "@/components/landing/landing-page-view";
 import { FieldsEditor } from "@/components/recruit/landing-pages/fields-editor";
 import { useSession } from "@/hooks/use-session";
+import { errorMessage, errorStatus, useListWebFormSubmissionsQuery } from "@/lib/crm/api";
 import config from "@/lib/iblai/config";
 import { entryTerms } from "@/lib/recruit/fields";
 import { landingPageUrl, validateLandingPage, type LandingPage } from "@/lib/recruit/landing-pages";
+import { useLandingPage, useLandingPages } from "@/lib/recruit/use-landing-pages";
 import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
 import { LIFECYCLE_LABELS } from "@/lib/recruit/vocabulary";
 
@@ -51,13 +53,15 @@ export default function LandingPageEditorPage() {
   const slug = params?.slug ? decodeURIComponent(params.slug) : "";
   const router = useRouter();
   const { tenantKey, href, isAdmin } = useSession();
-  const { settings, branding, update, isLoading, isSaving } = useRecruitSettings();
+  const { branding } = useRecruitSettings();
+  const { page: stored, isLoading, error } = useLandingPage(slug);
+  const { save: saveForm, isSaving } = useLandingPages();
+  const { data: submissions } = useListWebFormSubmissionsQuery(
+    { slug, page_size: 1 },
+    { skip: !slug },
+  );
   const lookups = useDealLookups();
 
-  const stored = useMemo(
-    () => (settings.landingPages ?? []).find((p) => p.slug === slug),
-    [settings.landingPages, slug],
-  );
   const [draft, setDraft] = useState<LandingPage | null>(null);
   const [dirty, setDirty] = useState(false);
   const [tab, setTab] = useState("content");
@@ -77,35 +81,34 @@ export default function LandingPageEditorPage() {
     setDirty(true);
   };
 
-  const issues = draft ? validateLandingPage(draft) : [];
+  // Everything a published page needs, as hints; only what the platform would refuse blocks Save.
+  const issues = draft ? validateLandingPage(draft, { publish: true }) : [];
+  const blocking = draft ? validateLandingPage(draft, { publish: draft.published }) : [];
   const url = landingPageUrl(config.appUrl(), tenantKey, slug);
   const pipeline =
-    lookups.pipelines.find((p) => p.code === (draft?.pipelineCode || "default")) ??
+    (draft?.pipelineCode && lookups.pipelines.find((p) => p.code === draft.pipelineCode)) ||
     lookups.defaultPipeline;
   const stages = openStages(pipeline);
 
   const persist = async (next: LandingPage, message: string) => {
     try {
-      await update({
-        landingPages: (settings.landingPages ?? []).map((p) =>
-          p.slug === slug ? { ...next, updatedAt: new Date().toISOString() } : p,
-        ),
-      });
+      await saveForm(slug, next);
       setDirty(false);
       toast.success(message);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save");
+      toast.error(errorMessage(e, "Could not save"));
     }
   };
 
   const save = () => draft && void persist(draft, "Page saved");
   const togglePublished = (on: boolean) => {
     if (!draft) return;
-    if (on && issues.length) {
-      toast.error(`Fix before publishing: ${issues[0].message}`);
+    const next = { ...draft, published: on };
+    const problems = validateLandingPage(next, { publish: on });
+    if (problems.length) {
+      toast.error(`Fix before ${on ? "publishing" : "saving"}: ${problems[0].message}`);
       return;
     }
-    const next = { ...draft, published: on };
     setDraft(next);
     void persist(next, on ? "Page is live" : "Page unpublished");
   };
@@ -121,12 +124,13 @@ export default function LandingPageEditorPage() {
     );
   }
   if (!stored || !draft) {
+    const missing = !error || errorStatus(error) === 404;
     return (
       <div className="flex min-h-0 flex-1 flex-col p-4 md:p-6">
         <EmptyState
           icon={<Globe />}
-          title="This landing page no longer exists"
-          description="It may have been deleted or renamed."
+          title={missing ? "This landing page no longer exists" : "Could not load this page"}
+          description={missing ? "It may have been deleted or renamed." : errorMessage(error)}
           action={
             <Button variant="outline" onClick={() => router.push(href("/landing-pages"))}>
               <ArrowLeft data-icon="inline-start" /> Back to landing pages
@@ -197,7 +201,7 @@ export default function LandingPageEditorPage() {
               size="sm"
               className="ibl-button-primary"
               onClick={save}
-              disabled={!dirty || isSaving || !isAdmin}
+              disabled={!dirty || isSaving || !isAdmin || blocking.length > 0}
             >
               {isSaving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}
               Save
@@ -266,10 +270,12 @@ export default function LandingPageEditorPage() {
                     Highlights{" "}
                     <InfoTip label="About highlights">One per line — shown as a checklist.</InfoTip>
                   </Label>
+                  {/* Lists are uncontrolled so a typed newline or comma survives; a save remounts them. */}
                   <Textarea
                     id="lp-highlights"
+                    key={`highlights-${stored.updatedAt}`}
                     rows={3}
-                    value={lines(draft.highlights)}
+                    defaultValue={lines(draft.highlights)}
                     onChange={(e) => patch({ highlights: unlines(e.target.value) })}
                   />
                 </div>
@@ -282,8 +288,9 @@ export default function LandingPageEditorPage() {
                   </Label>
                   <Textarea
                     id="lp-body"
+                    key={`body-${stored.updatedAt}`}
                     rows={3}
-                    value={lines(draft.body)}
+                    defaultValue={lines(draft.body)}
                     onChange={(e) => patch({ body: unlines(e.target.value) })}
                   />
                 </div>
@@ -371,6 +378,9 @@ export default function LandingPageEditorPage() {
                       value={draft.pipelineCode ?? ""}
                       onChange={(v) => patch({ pipelineCode: v, stageCode: "" })}
                       options={lookups.pipelines.map((p) => ({ value: p.code, label: p.name }))}
+                      allowEmpty
+                      emptyLabel="Default funnel"
+                      placeholder="Default funnel"
                       size="sm"
                       disabled={!draft.createApplication}
                       aria-label="Funnel"
@@ -444,7 +454,8 @@ export default function LandingPageEditorPage() {
                     </Label>
                     <Input
                       id="lp-tags"
-                      value={(draft.tags ?? []).join(", ")}
+                      key={`tags-${stored.updatedAt}`}
+                      defaultValue={(draft.tags ?? []).join(", ")}
                       onChange={(e) =>
                         patch({
                           tags: e.target.value
@@ -502,7 +513,7 @@ export default function LandingPageEditorPage() {
                   </div>
                   <p className="text-muted-foreground text-[11px]">
                     Add <code className="font-mono">?utm_source=…&utm_campaign=…</code> to track
-                    where inquiries come from; they are stored on the prospect.
+                    where inquiries come from; they are stored with each submission.
                   </p>
                 </div>
                 <div className="grid gap-1.5">
@@ -514,7 +525,7 @@ export default function LandingPageEditorPage() {
                 <div className="grid gap-1.5">
                   <Label className={label}>Submissions</Label>
                   <p className="text-sm text-gray-900">
-                    {draft.submissions ?? 0} so far ·{" "}
+                    {submissions ? submissions.count : "—"} so far ·{" "}
                     <Link href={href("/prospects")} className="text-[#0058cc] hover:underline">
                       see prospects
                     </Link>

@@ -14,7 +14,7 @@ import { SimpleSelect } from "@/components/crm/simple-select";
 import { OwnerSelect } from "@/components/crm/owner-select";
 import { PeopleTable } from "@/components/crm/people/people-table";
 import { PersonDialog } from "@/components/crm/people/person-dialog";
-import { useListOrganizationsQuery, useListPersonsQuery, useListTagsQuery } from "@/lib/crm/api";
+import { useListPersonsQuery, useListTagsQuery } from "@/lib/crm/api";
 import { LIFECYCLE_STAGES, type LifecycleStage } from "@/lib/crm/types";
 import { LIFECYCLE_LABELS, VOCAB } from "@/lib/recruit/vocabulary";
 
@@ -22,15 +22,16 @@ const PAGE_SIZE = 50;
 
 /**
  * Prospects — every student, applicant and school contact in the
- * organization (CRM persons). The CRM API has no free-text person search, so
- * the toolbar filters on the server (stage, counselor, tag) and the search box
- * narrows the loaded page on the client.
+ * organization (CRM persons). The toolbar filters on the server (stage,
+ * counselor, tag), and the search box searches every prospect's name, email
+ * and program there too (debounced).
  */
 export default function PeoplePage() {
   const router = useRouter();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debounced, setDebounced] = useState("");
   const [lifecycle, setLifecycle] = useState("");
   const [owner, setOwner] = useState<number | null>(null);
   const [tag, setTag] = useState("");
@@ -46,36 +47,30 @@ export default function PeoplePage() {
     router.replace(`${window.location.pathname}${qs ? `?${qs}` : ""}`);
   }, [router]);
 
-  const hasServerFilter = Boolean(lifecycle || owner || tag);
+  // 300ms debounce so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const hasServerFilter = Boolean(debounced || lifecycle || owner || tag);
 
   useEffect(() => {
     setPage(1);
-  }, [lifecycle, owner, tag]);
+  }, [debounced, lifecycle, owner, tag]);
 
   const { data, isLoading, isFetching } = useListPersonsQuery({
     page,
     page_size: PAGE_SIZE,
+    search: debounced || undefined,
     lifecycle_stage: (lifecycle || undefined) as LifecycleStage | undefined,
     owner: owner ?? undefined,
     tags: tag || undefined,
   });
 
-  const { data: orgs } = useListOrganizationsQuery({ page_size: 100 });
   const { data: tags } = useListTagsQuery();
 
-  const orgNames = useMemo(
-    () => new Map((orgs?.results ?? []).map((o) => [o.id, o.name] as const)),
-    [orgs],
-  );
-
   const rows = useMemo(() => data?.results ?? [], [data]);
-  const q = search.trim().toLowerCase();
-  const filtered = useMemo(() => {
-    if (!q) return rows;
-    return rows.filter((p) =>
-      [p.name, p.primary_email, p.job_title].some((v) => v?.toLowerCase().includes(q)),
-    );
-  }, [rows, q]);
 
   const clearFilters = () => {
     setSearch("");
@@ -85,7 +80,6 @@ export default function PeoplePage() {
   };
 
   const showEmptyState = !isLoading && rows.length === 0;
-  const noMatches = !isLoading && rows.length > 0 && filtered.length === 0;
 
   return (
     <>
@@ -114,7 +108,7 @@ export default function PeoplePage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search this page by name, email, program…"
+                placeholder="Search by name, email, program…"
                 className="h-8 pl-8 text-sm"
                 aria-label={`Search ${VOCAB.prospect.lowerMany}`}
               />
@@ -161,11 +155,6 @@ export default function PeoplePage() {
                 Clear
               </Button>
             ) : null}
-            {q && !noMatches ? (
-              <span className="text-muted-foreground text-xs">
-                {filtered.length} of {rows.length} on this page
-              </span>
-            ) : null}
           </>
         }
       />
@@ -176,7 +165,7 @@ export default function PeoplePage() {
             <EmptyState
               icon={<Users />}
               title={`No ${VOCAB.prospect.lowerMany} match these filters`}
-              description={`Try a different stage, ${VOCAB.counselor.lower} or tag.`}
+              description={`Try a different search, stage, ${VOCAB.counselor.lower} or tag.`}
               action={
                 <Button variant="outline" onClick={clearFilters}>
                   Clear filters
@@ -195,26 +184,10 @@ export default function PeoplePage() {
               }
             />
           )
-        ) : noMatches ? (
-          <EmptyState
-            icon={<Search />}
-            title={`Nothing on this page matches “${search.trim()}”`}
-            description={`Search only looks at the ${VOCAB.prospect.lowerMany} loaded on this page. Try another page or clear the search.`}
-            action={
-              <Button variant="outline" onClick={() => setSearch("")}>
-                Clear search
-              </Button>
-            }
-          />
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-[var(--border-color,#e5e7eb)] bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="min-h-0 flex-1 overflow-auto">
-              <PeopleTable
-                persons={filtered}
-                isLoading={isLoading}
-                orgNames={orgNames}
-                skeletonRows={10}
-              />
+              <PeopleTable persons={rows} isLoading={isLoading} skeletonRows={10} />
             </div>
             <PaginationBar
               data={data}

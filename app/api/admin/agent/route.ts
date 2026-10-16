@@ -1,28 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
 import config from "@/lib/iblai/config";
-import {
-  apiKeyFor,
-  isOrgAdmin,
-  isResponse,
-  jsonBody,
-  platformFailure,
-  requireAdmin,
-  verifyCaller,
-} from "@/lib/iblai/platform";
+import { jsonBody, platformFailure, verifyCaller } from "@/lib/iblai/platform";
 import { setupChiefOfStaff } from "@/lib/recruit/agent";
 import { readRecruitSettingsServer } from "@/lib/recruit/settings-server";
 
 /**
  * Chief of Staff setup, run from Settings → Chief of Staff by an org admin.
  *
- * GET  ?org=<key>  — what the server knows: whether it holds a key for the
- *                    org, whether the MCP secret is set, the public app URL,
- *                    and the agent currently recorded for the org. Any
- *                    signed-in member may read it (booleans only); when the
- *                    server holds no key for the org, admin status cannot be
- *                    verified and the checklist says so instead of failing.
+ * GET  ?org=<key>  — the agent currently recorded for the org and the public
+ *                    app URL the platform will call back on. Any signed-in
+ *                    member may read it.
  * POST { org, institutionName?, appUrl? } — create / re-sync the agent, its
- *                    MCP server + connection, and save the ids. Admins only;
+ *                    MCP server + connection, and save the ids. Runs as the
+ *                    caller (their own session token), so the platform
+ *                    refuses anyone who does not administer the org;
  *                    idempotent.
  */
 export const dynamic = "force-dynamic";
@@ -32,15 +23,6 @@ export async function GET(req: NextRequest) {
   if (!org) return NextResponse.json({ error: "Organization is required" }, { status: 400 });
   const caller = await verifyCaller(req);
   if (!caller) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-  const serverHasKey = !!apiKeyFor(org);
-  let isAdmin: boolean | null = null;
-  if (serverHasKey) {
-    try {
-      isAdmin = await isOrgAdmin(caller.username, org);
-    } catch (e) {
-      return platformFailure(e);
-    }
-  }
   const settings = await readRecruitSettingsServer(org);
   return NextResponse.json({
     org,
@@ -48,10 +30,6 @@ export async function GET(req: NextRequest) {
     pinnedByEnv: !!config.defaultAgentId(),
     mcpServerId: settings.mcpServerId ?? null,
     setupCompletedAt: settings.setupCompletedAt ?? null,
-    serverHasKey,
-    /** `null` when the server cannot ask the platform (no key for the org). */
-    isAdmin,
-    mcpTokenSet: config.mcpToken().length >= 16,
     appUrl: config.appUrl() || req.nextUrl.origin,
     username: caller.username,
   });
@@ -61,18 +39,8 @@ export async function POST(req: NextRequest) {
   const body = await jsonBody(req);
   const org = typeof body.org === "string" ? body.org : "";
   if (!org) return NextResponse.json({ error: "Organization is required" }, { status: 400 });
-  // With a key, the platform confirms the caller administers the org. Without
-  // one, the setup runs as the caller (their own session token), so the
-  // platform enforces their rights on every call.
-  const serverHasKey = !!apiKeyFor(org);
-  let caller;
-  try {
-    caller = serverHasKey ? await requireAdmin(req, org) : await verifyCaller(req);
-  } catch (e) {
-    return platformFailure(e);
-  }
+  const caller = await verifyCaller(req);
   if (!caller) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-  if (isResponse(caller)) return caller;
   const appUrl =
     (typeof body.appUrl === "string" && /^https?:\/\//.test(body.appUrl) ? body.appUrl : "") ||
     config.appUrl() ||
@@ -81,10 +49,9 @@ export async function POST(req: NextRequest) {
   try {
     const result = await setupChiefOfStaff({
       org,
-      username: serverHasKey ? config.apiUsername() || caller.username : caller.username,
+      username: caller.username,
       appUrl,
-      mcpToken: config.mcpToken(),
-      sessionToken: serverHasKey ? undefined : caller.token,
+      authorization: `Token ${caller.token}`,
       institutionName:
         typeof body.institutionName === "string"
           ? body.institutionName.trim() || undefined

@@ -31,6 +31,7 @@ import { InfoTip } from "@/components/crm/info-tip";
 import { SimpleSelect } from "@/components/crm/simple-select";
 import { OwnerSelect } from "@/components/crm/owner-select";
 import { openStages, useDealLookups } from "@/components/crm/deals/use-lookups";
+import { usePersonSearch } from "@/components/crm/people/use-person-search";
 import { useSession } from "@/hooks/use-session";
 import { errorMessage, useCreateDealMutation, useGetPersonQuery } from "@/lib/crm/api";
 import type { Deal } from "@/lib/crm/types";
@@ -110,12 +111,14 @@ export function DealDialog({
   const [description, setDescription] = useState("");
   const [touched, setTouched] = useState(false);
 
-  // The prospect may not be on the first page the picker lists (deep links).
-  const { data: seededPerson } = useGetPersonQuery(defaultPerson ?? "", {
-    skip: !open || !defaultPerson,
+  const personSearch = usePersonSearch(lookups.persons, !open);
+  // The prospect may not be on the first page the picker lists (deep links, search).
+  const { data: fetchedPerson } = useGetPersonQuery(personId, {
+    skip: !open || !personId || lookups.personById.has(personId),
   });
   const selectedPerson =
-    lookups.personById.get(personId) ?? (seededPerson?.id === personId ? seededPerson : undefined);
+    lookups.personById.get(personId) ??
+    (fetchedPerson?.id === personId ? fetchedPerson : undefined);
 
   // Reset to the defaults each time the dialog opens.
   useEffect(() => {
@@ -257,12 +260,17 @@ export function DealDialog({
                 <ChevronsUpDown className="ml-auto size-4 shrink-0 opacity-50" />
               </PopoverTrigger>
               <PopoverContent className="w-80 p-0" align="start">
-                <Command>
-                  <CommandInput autoFocus placeholder="Search prospects…" />
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    autoFocus
+                    placeholder="Search prospects…"
+                    value={personSearch.query}
+                    onValueChange={personSearch.setQuery}
+                  />
                   <CommandList>
                     <CommandEmpty>No prospect found.</CommandEmpty>
                     <CommandGroup>
-                      {lookups.persons.map((p) => (
+                      {personSearch.rows.map((p) => (
                         <CommandItem
                           key={p.id}
                           value={`${p.name} ${p.primary_email ?? ""}`}

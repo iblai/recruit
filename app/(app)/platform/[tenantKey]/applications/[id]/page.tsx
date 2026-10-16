@@ -40,6 +40,7 @@ import {
   useMarkDealLostMutation,
   useMarkDealWonMutation,
   useMoveDealStageMutation,
+  usePatchMetadataMutation,
   useUpdateDealMutation,
 } from "@/lib/crm/api";
 import {
@@ -50,7 +51,7 @@ import {
   formatRelative,
 } from "@/lib/crm/format";
 import type { DealInput, PipelineStage } from "@/lib/crm/types";
-import { APPLICATION_FIELDS, readMeta, withMeta, type MetaField } from "@/lib/recruit/fields";
+import { APPLICATION_FIELDS, metaPatch, readMeta, type MetaField } from "@/lib/recruit/fields";
 import { VOCAB } from "@/lib/recruit/vocabulary";
 import { cn } from "@/lib/utils";
 
@@ -141,6 +142,7 @@ export default function DealDetailPage() {
   } = useGetDealQuery(dealId, { skip: !Number.isFinite(dealId) });
   const lookups = useDealLookups();
   const [updateDeal] = useUpdateDealMutation();
+  const [patchMetadata] = usePatchMetadataMutation();
   const [moveStage, { isLoading: moving }] = useMoveDealStageMutation();
   const [markWon, { isLoading: winning }] = useMarkDealWonMutation();
   const [markLost, { isLoading: losing }] = useMarkDealLostMutation();
@@ -166,10 +168,8 @@ export default function DealDetailPage() {
 
   const pipeline = deal ? lookups.pipelineById.get(deal.pipeline) : undefined;
   const stage = deal ? lookups.stageById.get(deal.stage) : undefined;
-  const person = deal ? lookups.personById.get(deal.person) : undefined;
-  const organization = deal?.organization
-    ? lookups.organizationById.get(deal.organization)
-    : undefined;
+  const personName = deal?.person_name || "Unknown prospect";
+  const organizationName = deal?.organization_name || undefined;
   const firstOpenStage = openStages(pipeline)[0];
 
   const patch = async (body: DealInput) => {
@@ -181,8 +181,15 @@ export default function DealDetailPage() {
     }
   };
 
-  const saveMeta = (field: MetaField, value: string) =>
-    deal ? patch({ metadata: withMeta(deal.metadata, field, value) }) : undefined;
+  /** Application fields live in `metadata`, merged one key at a time. */
+  const saveMeta = async (field: MetaField, value: string) => {
+    if (!deal) return;
+    try {
+      await patchMetadata({ kind: "deals", id: deal.id, patch: metaPatch(field, value) }).unwrap();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    }
+  };
 
   const doMove = async (stageId: number, message: string) => {
     if (!deal) return;
@@ -286,7 +293,7 @@ export default function DealDetailPage() {
                     className="inline-flex items-center gap-1 text-[#0058cc] hover:underline"
                   >
                     <User className="size-3" />
-                    {person?.name ?? "Unknown prospect"}
+                    {personName}
                   </Link>
                   {deal.organization ? (
                     <Link
@@ -294,7 +301,7 @@ export default function DealDetailPage() {
                       className="inline-flex items-center gap-1 text-[#0058cc] hover:underline"
                     >
                       <School className="size-3" />
-                      {organization?.name ?? VOCAB.school.one}
+                      {organizationName ?? VOCAB.school.one}
                     </Link>
                   ) : null}
                   <span>{pipeline?.name ?? VOCAB.funnel.one}</span>
@@ -428,8 +435,8 @@ export default function DealDetailPage() {
                     href={href(`/prospects/${deal.person}`)}
                     className="inline-flex min-w-0 items-center gap-1.5 text-[#0058cc] hover:underline"
                   >
-                    <EntityAvatar name={person?.name ?? "?"} seed={deal.person} size="xs" />
-                    <span className="truncate">{person?.name ?? "Unknown prospect"}</span>
+                    <EntityAvatar name={personName} seed={deal.person} size="xs" />
+                    <span className="truncate">{personName}</span>
                   </Link>
                 </FieldRow>
 

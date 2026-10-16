@@ -1,9 +1,9 @@
 /**
  * The Chief of Staff's tools — what the agent can look up and do in the
- * recruitment CRM on behalf of the team. Every tool runs with the
- * organization's authority (the server's Platform API Token) against the
- * same `/dm/api/crm/…` resources the app's screens use, so what the agent
- * changes is what the team sees, and vice versa.
+ * recruitment CRM on behalf of the team. Every tool runs with the key the
+ * platform presents (minted by setup: the CRM User role, or acting as that
+ * admin where RBAC is off) against the same `/dm/api/crm/…` resources the
+ * app's screens use, so what the agent changes is what the team sees.
  *
  * Design rules:
  *  - Read tools are cheap and answer in one call; write tools are explicit
@@ -17,11 +17,17 @@ import {
   APPLICATION_FIELDS,
   PROSPECT_FIELDS,
   applicationTitle,
-  withMeta,
+  metaPatch,
   type Metadata,
 } from "../recruit/fields";
 import { LIFECYCLE_LABELS, ACTIVITY_LABELS, STATUS_LABELS } from "../recruit/vocabulary";
-import { landingPageUrl, newLandingPage, type LandingPage } from "../recruit/landing-pages";
+import {
+  fromWebForm,
+  landingPageUrl,
+  newLandingPage,
+  toWebForm,
+  validateLandingPage,
+} from "../recruit/landing-pages";
 import type { CrmServer } from "../recruit/crm-server";
 import { McpServer, errorResult, type ToolDefinition } from "./protocol";
 
@@ -30,10 +36,6 @@ export interface ToolContext {
   crm: CrmServer;
   /** Public origin of this app, for landing-page links. */
   appUrl: string;
-  /** Read the app's org settings (landing pages, …). */
-  readSettings: () => Promise<{ landingPages?: LandingPage[]; [k: string]: unknown }>;
-  /** Merge a patch into the app's org settings. */
-  writeSettings: (patch: Record<string, unknown>) => Promise<void>;
   now?: () => Date;
 }
 
@@ -173,12 +175,14 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
     annotations: { title: "Daily brief", readOnlyHint: true },
     handler: async (_args, ctx) => {
       const now = (ctx.now ?? (() => new Date()))();
-      const [{ pipelines, stageName, pipelineName }, deals, openActivities, people] =
+      const weekAgo = new Date(now.getTime() - 7 * DAY);
+      const [{ pipelines, stageName, pipelineName }, deals, openActivities, people, recent] =
         await Promise.all([
           stageIndex(ctx.crm),
           ctx.crm.allDeals({ status: "open" }, 10),
           ctx.crm.allActivities({ is_done: false }, 3),
-          ctx.crm.listPersons({ page_size: 100 }),
+          ctx.crm.listPersons({ page_size: 1 }),
+          ctx.crm.listPersons({ created_at__gte: weekAgo.toISOString(), page_size: 1 }),
         ]);
       const byFunnel = pipelines.map((p) => ({
         funnel: p.name,
@@ -197,8 +201,6 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
         const d = new Date(a.schedule_from as string);
         return d >= startOfToday && d < endOfToday;
       });
-      const weekAgo = new Date(now.getTime() - 7 * DAY);
-      const newInquiries = people.results.filter((p) => new Date(p.created_at) >= weekAgo);
       const stale = deals.filter((d) => {
         const p = pipelines.find((x) => x.id === d.pipeline);
         if (!p?.rotten_days) return false;
@@ -212,7 +214,7 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
       return {
         as_of: now.toISOString(),
         prospects_total: people.count,
-        new_inquiries_7d: newInquiries.length,
+        new_inquiries_7d: recent.count,
         open_applications: deals.length,
         funnels: byFunnel,
         due_today: dueToday.slice(0, 20).map(activityView),
@@ -234,13 +236,13 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
   T({
     name: "search_prospects",
     description:
-      "Find prospects (students, applicants, contacts) by name, email, phone or intended program, optionally narrowed by lifecycle stage, counselor or tag. Returns up to `limit` matches with their ids — use the id with get_prospect, create_application or log_activity.",
+      "Find prospects (students, applicants, contacts) by name, email or intended program, optionally narrowed by lifecycle stage, counselor or tag. Returns up to `limit` matches, newest first, with their ids — use the id with get_prospect, create_application or log_activity.",
     inputSchema: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "Part of a name, email, phone or program. Omit to list recent prospects.",
+          description: "Part of a name, email or program. Omit to list recent prospects.",
         },
         stage: {
           type: "string",
@@ -259,22 +261,15 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
     },
     annotations: { title: "Search prospects", readOnlyHint: true },
     handler: async (args, ctx) => {
-      const q = str(args.query).toLowerCase();
-      const limit = limitOf(args.limit);
-      const filters = {
+      const data = await ctx.crm.listPersons({
+        search: str(args.query) || undefined,
         lifecycle_stage: (str(args.stage) || undefined) as LifecycleStage | undefined,
         owner: num(args.counselor_id),
         tags: num(args.tag_id) ? String(args.tag_id) : undefined,
-      };
-      const rows = await ctx.crm.allPersons(filters, q ? 5 : 1);
-      const hits = rows.filter(
-        (p) =>
-          !q ||
-          [p.name, p.primary_email, p.job_title, ...(p.emails ?? []), ...(p.contact_numbers ?? [])]
-            .filter(Boolean)
-            .some((v) => String(v).toLowerCase().includes(q)),
-      );
-      return { count: hits.length, prospects: hits.slice(0, limit).map((p) => personView(p)) };
+        ordering: "-created_at",
+        page_size: limitOf(args.limit),
+      });
+      return { count: data.count, prospects: data.results.map((p) => personView(p)) };
     },
   }),
   T({
@@ -296,13 +291,8 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
         ctx.crm.listActivities({ person: id, page_size: 50 }),
         stageIndex(ctx.crm),
       ]);
-      const school = person.organization
-        ? await ctx.crm
-            .listOrganizations({ page_size: 100 })
-            .then((r) => r.results.find((o) => o.id === person.organization))
-        : undefined;
       return {
-        prospect: personView(person, { school: school?.name ?? null }),
+        prospect: personView(person, { school: person.organization_name ?? null }),
         applications: deals.results.map((d) =>
           dealView(d, stageName.get(d.stage), pipelineName.get(d.pipeline)),
         ),
@@ -351,7 +341,7 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
     handler: async (args, ctx) => {
       const email = str(args.email).toLowerCase();
       if (email) {
-        const dupe = await ctx.crm.findPersonByEmail(email, 3);
+        const dupe = await ctx.crm.findPersonByEmail(email);
         if (dupe)
           return errorResult(
             `A prospect with ${email} already exists: ${dupe.name} (id ${dupe.id}). Use update_prospect or log_activity instead.`,
@@ -418,7 +408,6 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
     annotations: { title: "Update prospect", idempotentHint: true },
     handler: async (args, ctx) => {
       const id = str(args.prospect_id);
-      const current = await ctx.crm.getPerson(id);
       const body: Record<string, unknown> = {};
       if (str(args.name)) body.name = str(args.name);
       if (args.email !== undefined) body.primary_email = str(args.email).toLowerCase() || undefined;
@@ -432,20 +421,21 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
           ? (await ctx.crm.findOrCreateOrganization(str(args.school))).id
           : null;
       }
+      let patch: Metadata = {};
       if (args.fields && typeof args.fields === "object") {
-        let metadata: Metadata = { ...current.metadata };
         for (const [k, v] of Object.entries(args.fields as Record<string, unknown>)) {
           const field = PROSPECT_FIELDS.find((f) => f.key === k) ?? {
             key: k,
             label: k,
             type: "text" as const,
           };
-          metadata = withMeta(metadata, field, v as string | boolean | number | null);
+          patch = { ...patch, ...metaPatch(field, v as string | boolean | number | null) };
         }
-        body.metadata = metadata;
       }
-      const person = await ctx.crm.updatePerson(id, body);
-      return { updated: true, prospect: personView(person) };
+      // Merged under a row lock, so a teammate's edit to other fields survives.
+      let person = Object.keys(body).length ? await ctx.crm.updatePerson(id, body) : undefined;
+      if (Object.keys(patch).length) person = await ctx.crm.patchMetadata("persons", id, patch);
+      return { updated: true, prospect: personView(person ?? (await ctx.crm.getPerson(id))) };
     },
   }),
 
@@ -748,7 +738,6 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
     annotations: { title: "Update application", idempotentHint: true },
     handler: async (args, ctx) => {
       const id = num(args.application_id) as number;
-      const current = await ctx.crm.getDeal(id);
       const body: Record<string, unknown> = {};
       if (str(args.title)) body.title = str(args.title);
       if (args.notes !== undefined) body.description = str(args.notes);
@@ -760,13 +749,17 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
           args.est_net_tuition === null ? "0" : String(num(args.est_net_tuition) ?? 0);
       if (args.counselor_id !== undefined)
         body.owner = args.counselor_id === null ? null : num(args.counselor_id);
-      let metadata: Metadata = { ...current.metadata };
+      let patch: Metadata = {};
       for (const field of APPLICATION_FIELDS) {
         if (args[field.key] !== undefined)
-          metadata = withMeta(metadata, field, args[field.key] as string | boolean | number | null);
+          patch = {
+            ...patch,
+            ...metaPatch(field, args[field.key] as string | boolean | number | null),
+          };
       }
-      body.metadata = metadata;
-      const deal = await ctx.crm.updateDeal(id, body);
+      let deal = Object.keys(body).length ? await ctx.crm.updateDeal(id, body) : undefined;
+      if (Object.keys(patch).length) deal = await ctx.crm.patchMetadata<Deal>("deals", id, patch);
+      deal ??= await ctx.crm.getDeal(id);
       const { stageName, pipelineName } = await stageIndex(ctx.crm);
       return {
         updated: true,
@@ -944,21 +937,22 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
   T({
     name: "list_landing_pages",
     description:
-      "The public landing pages (inquiry / event / interest forms) this organization publishes, with their URLs and submission counts.",
+      "The public landing pages (inquiry / event / interest pages) this organization publishes, with their URLs and how many submissions each received. Every submission becomes a prospect, with an application when the page opens one.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { title: "List landing pages", readOnlyHint: true },
     handler: async (_args, ctx) => {
-      const settings = await ctx.readSettings();
+      const pages = (await ctx.crm.listWebForms()).map(fromWebForm);
+      const counts = await Promise.all(pages.map((p) => ctx.crm.countWebFormSubmissions(p.slug)));
       return {
-        landing_pages: (settings.landingPages ?? []).map((p) => ({
+        landing_pages: pages.map((p, i) => ({
           slug: p.slug,
           title: p.title,
           published: p.published,
           url: landingPageUrl(ctx.appUrl, ctx.org, p.slug),
-          submissions: p.submissions ?? 0,
           program: p.program || null,
           term: p.term || null,
           fields: p.fields.map((f) => f.label),
+          submissions: counts[i],
         })),
       };
     },
@@ -989,8 +983,6 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
     },
     annotations: { title: "Create landing page" },
     handler: async (args, ctx) => {
-      const settings = await ctx.readSettings();
-      const pages = settings.landingPages ?? [];
       const page = newLandingPage({
         title: str(args.title),
         slug: str(args.slug) || undefined,
@@ -1006,11 +998,14 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
         ctaLabel: str(args.cta_label) || undefined,
         published: args.publish === true,
       });
-      if (pages.some((p) => p.slug === page.slug))
+      const taken = (await ctx.crm.listWebForms()).some((f) => f.slug === page.slug);
+      if (taken)
         return errorResult(
           `A landing page with slug "${page.slug}" already exists. Pick another slug.`,
         );
-      await ctx.writeSettings({ landingPages: [...pages, page] });
+      const problems = validateLandingPage(page, { publish: page.published });
+      if (problems.length) return errorResult(`The page can't be saved: ${problems[0].message}`);
+      await ctx.crm.createWebForm(toWebForm(page));
       return {
         created: true,
         slug: page.slug,

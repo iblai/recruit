@@ -1,17 +1,20 @@
 # Landing pages
 
-Public, prospect-facing forms at `/p/<org>/<slug>` — "Request information",
+Public, prospect-facing pages at `/p/<org>/<slug>` — "Request information",
 "Register for the Fall open house", "Nursing info session". Fast,
 server-rendered, no sign-in, no SDK bundle, branded with the institution's
-accent color. A submission becomes records in the CRM automatically.
+accent color. Every submission becomes a prospect in the CRM.
 
 ## Where a page lives
 
-Each page is a JSON document (`LandingPage` in `lib/recruit/landing-pages.ts`)
-stored in the organization's **public metadata** under
-`apps.recruit.landingPages`. That is why the public route can render it with
-no credentials, and why there is no database of our own. Writes go through
-GET → merge → PUT like every other org setting.
+Each page is a **CRM web form** on the platform (`/api/crm/web-forms/`,
+platform 4.428.0+): the copy in its `metadata`, the questions in `fields`,
+where a submission lands in `routing`. `lib/recruit/landing-pages.ts` maps
+the editor's `LandingPage` to it (`toWebForm` / `fromWebForm`); there is no
+database of our own and no server secret. The public route renders a
+published page from the platform's public read
+(`GET /api/crm/orgs/<org>/web-forms/<slug>/` — no routing, no mappings),
+cached for a minute.
 
 ## Building a page
 
@@ -26,58 +29,53 @@ public route renders, in preview mode):
   phone, number, date, dropdown, paragraph, checkbox), placeholder, required
   flag and — the important part — **where the answer lands**:
 
-  | Mapping                                                                                        | Lands in                                            |
-  | ---------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-  | First name / Last name / Full name                                                             | `person.name`                                       |
-  | Email                                                                                          | `person.primary_email` (also used to de-duplicate)  |
-  | Phone                                                                                          | `person.contact_numbers[0]`                         |
-  | School                                                                                         | an Organization, found by name or created           |
-  | Program of interest                                                                            | `person.job_title` + `deal.metadata.program`        |
-  | Entry term                                                                                     | `person.metadata.entry_term` + `deal.metadata.term` |
-  | Graduation year, entry type, residency, city, state, country, parent name / email, SMS consent | `person.metadata.<key>`                             |
-  | Message                                                                                        | the application's notes                             |
-  | Keep as extra field                                                                            | `person.metadata.<field key>`                       |
+  | Mapping                                                                            | Lands in                                            |
+  | ---------------------------------------------------------------------------------- | --------------------------------------------------- |
+  | First name / Last name / Full name                                                 | `person.name`                                       |
+  | Email                                                                              | `person.primary_email` (also used to de-duplicate)  |
+  | Phone                                                                              | `person.contact_numbers[0]`                         |
+  | School                                                                             | an Organization, found by name or created           |
+  | Program of interest                                                                | `person.job_title` + `deal.metadata.program`        |
+  | Entry term                                                                         | `person.metadata.entry_term` + `deal.metadata.term` |
+  | Entry type                                                                         | `person.metadata.entry_type` + `deal.metadata`      |
+  | Graduation year, residency, city, state, country, parent name / email, SMS consent | `person.metadata.<key>`                             |
+  | Message                                                                            | the application's notes                             |
+  | Keep as extra field                                                                | `person.metadata.<field key>`                       |
 
-  A page must map one question to Email and one to a name before it can be published.
+  Question keys start with a lowercase letter (letters, digits, `_`), and no
+  two questions may land in the same place. A page must map one question to
+  Email and one to a name before it can be published.
 
 - **Routing** — open an application or not; funnel and starting stage (by
   stable code — the first open stage when empty); default program and term;
   the source code recorded on the application (created on first use); tags
   (created on first use) attached to the prospect and the application; the
   prospect's lifecycle stage; the counselor who owns submissions.
-- **Share** — the public link, UTM guidance (`?utm_source=…` is stored on the
-  prospect), an `<iframe>` embed snippet, the submission count.
+- **Share** — the public link, UTM guidance and an `<iframe>` embed snippet.
 
 **Publish** (switch in the header or the list) validates the page and flips it
 live. Unpublished or unknown slugs show a neutral "not available" page — never
-a hint about what exists.
+a hint about what exists. The list counts each page's submissions.
 
 The Chief of Staff can draft pages too (`create_landing_page`); they stay
 unpublished until a human reviews them unless the user explicitly asks to publish.
 
 ## What a submission does
 
-`POST /api/public/forms/<org>/<slug>` with `{ answers, website, utm, pageUrl }`:
+The visitor's browser posts the answers straight to the platform
+(`POST /api/crm/orgs/<org>/web-forms/<slug>/submissions/`, no credential),
+which files them in one transaction: the prospect with that email is reused
+(gaps filled, nothing overwritten) or created; the application opens in the
+configured funnel and stage when the page routes to one, titled
+"Name — Program · Term"; the tags go on both; a note lists every answer and
+the page URL; UTM tags (`?utm_source=…`) are kept with the submission.
 
-1. Honeypot (`website` filled → silently accepted and dropped), per-IP rate
-   limit (12 per 10 minutes), size caps.
-2. Load the _published_ page from the org's metadata; validate the answers
-   against **its** definition (`validateSubmission`) — required fields, email
-   format, dropdown options, numbers. Field errors come back as `422` with
-   `issues[]` the form highlights.
-3. `planSubmission` turns answers into CRM payloads using each field's mapping.
-4. `applySubmission` (with the org's Platform API Token):
-   - find or create the school by name;
-   - reuse a prospect with the same email (merging new metadata, filling empty
-     phone / program / school) or create one;
-   - attach the tags;
-   - open the application in the configured funnel and stage with the page's
-     source, tagged the same way;
-   - leave a note on the prospect (and application) with every answer and the page URL.
-5. Increment the page's submission counter (best effort).
-
-The platform's own CRM notifications (`CRM_PERSON_CREATED`) reach the team's
-bell; the Chief of Staff's `daily_brief` lists the week's new inquiries.
+- **Identical answers within ten minutes** count once (a double-click, a reload).
+- **A hidden `website` field** is a honeypot: bots that fill it get a normal
+  thank-you and nothing is stored.
+- **Too many submissions from one network** get `429`; the form says to try
+  again in a minute.
+- **Invalid answers** come back per question and show under each field.
 
 ## Branding
 

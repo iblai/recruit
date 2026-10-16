@@ -59,15 +59,12 @@ export function PeopleTable({
   persons,
   isLoading,
   columns = ALL_COLUMNS,
-  orgNames,
   skeletonRows = 8,
   className,
 }: {
   persons: Person[];
   isLoading?: boolean;
   columns?: PersonColumn[];
-  /** id → name, so the school cell can render a link without a lookup. */
-  orgNames?: Map<string, string>;
   skeletonRows?: number;
   className?: string;
 }) {
@@ -120,7 +117,7 @@ export function PeopleTable({
               </tr>
             ))
           : persons.map((p) => {
-              const orgName = p.organization ? orgNames?.get(p.organization) : undefined;
+              const orgName = p.organization ? (p.organization_name ?? undefined) : undefined;
               const gradYear = GRAD_YEAR_FIELD ? metaLabel(GRAD_YEAR_FIELD, p.metadata) : "";
               return (
                 <tr

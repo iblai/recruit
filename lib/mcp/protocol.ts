@@ -226,7 +226,7 @@ export class McpServer<Ctx = unknown> {
 
   /**
    * The Streamable HTTP endpoint. `authorize` decides whether the request may
-   * proceed (compare the bearer token); `ctx` is handed to every tool.
+   * proceed (the route checks a bearer is present); `ctx` is handed to every tool.
    */
   async handleHttp(
     req: Request,
@@ -259,6 +259,9 @@ export class McpServer<Ctx = unknown> {
       return json(rpcError(null, PARSE_ERROR, "Body is not valid JSON"), 400);
     }
     const messages = Array.isArray(body) ? body : [body];
+    // Any bearer passes the gate, so one request must not fan out into many platform calls.
+    if (messages.length > 10)
+      return json(rpcError(null, INVALID_REQUEST, "At most 10 messages per request"), 400);
     const responses = (await Promise.all(messages.map((m) => this.handleMessage(m, ctx)))).filter(
       (r): r is JsonRpcResponse => r !== null,
     );
@@ -311,14 +314,6 @@ export function describeError(e: unknown): string {
   }
   if (e instanceof Error) return e.message;
   return String(e);
-}
-
-/** Constant-time comparison of two bearer tokens. */
-export function tokensEqual(a: string, b: string): boolean {
-  if (!a || !b || a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
 }
 
 /** The bearer token on a request, or "". */

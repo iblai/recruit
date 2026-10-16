@@ -38,11 +38,12 @@ import {
   useDetachPersonTagMutation,
   useGetPersonQuery,
   useListOrganizationsQuery,
+  usePatchMetadataMutation,
   useUpdatePersonMutation,
 } from "@/lib/crm/api";
 import { formatDateTime, formatRelative } from "@/lib/crm/format";
 import { LIFECYCLE_STAGES, type LifecycleStage, type PersonInput } from "@/lib/crm/types";
-import { PROSPECT_FIELDS, readMeta, withMeta, type MetaField } from "@/lib/recruit/fields";
+import { metaPatch, PROSPECT_FIELDS, readMeta, type MetaField } from "@/lib/recruit/fields";
 import { LIFECYCLE_LABELS, VOCAB } from "@/lib/recruit/vocabulary";
 
 const CARD =
@@ -88,6 +89,7 @@ export default function PersonDetailPage() {
   const { data: person, isLoading, error } = useGetPersonQuery(id, { skip: !id });
   const { data: orgs } = useListOrganizationsQuery({ page_size: 100 });
   const [updatePerson] = useUpdatePersonMutation();
+  const [patchMetadata] = usePatchMetadataMutation();
   const [deletePerson, { isLoading: deleting }] = useDeletePersonMutation();
   const [attachTag] = useAttachPersonTagMutation();
   const [detachTag] = useDetachPersonTagMutation();
@@ -106,9 +108,7 @@ export default function PersonDetailPage() {
     () => (orgs?.results ?? []).map((o) => ({ value: o.id, label: o.name })),
     [orgs],
   );
-  const orgName = person?.organization
-    ? orgOptions.find((o) => o.value === person.organization)?.label
-    : undefined;
+  const orgName = person?.organization_name ?? undefined;
 
   const save = async (body: PersonInput) => {
     try {
@@ -118,9 +118,14 @@ export default function PersonDetailPage() {
     }
   };
 
-  /** Recruitment fields live in `metadata`; the API replaces it whole on PATCH. */
-  const saveMeta = (field: MetaField, value: string) =>
-    save({ metadata: withMeta(person?.metadata, field, value) });
+  /** Recruitment fields live in `metadata`, merged one key at a time. */
+  const saveMeta = async (field: MetaField, value: string) => {
+    try {
+      await patchMetadata({ kind: "persons", id, patch: metaPatch(field, value) }).unwrap();
+    } catch (err) {
+      toastApiError(err, "Could not save this change");
+    }
+  };
 
   if (errorStatus(error) === 404) {
     return (

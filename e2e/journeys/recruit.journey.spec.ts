@@ -21,12 +21,12 @@ test.describe.serial("recruit journey", () => {
     await page.goto(`${appHost}/platform/${encodeURIComponent(key)}/prospects?new=1`);
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible({ timeout: 20_000 });
-    await dialog.getByLabel(/^name/i).fill(` Prospect`);
+    await dialog.getByLabel(/^name/i).fill(`${stamp} Prospect`);
     await dialog.getByRole("button", { name: /create|save|add prospect/i }).click();
     await page.waitForURL((url) => /\/prospects\/[0-9a-f-]{36}/.test(url.pathname), {
       timeout: 20_000,
     });
-    await expect(page.getByText(` Prospect`).first()).toBeVisible();
+    await expect(page.getByText(`${stamp} Prospect`).first()).toBeVisible();
   });
 
   test("C2 · create a school and see it in the list", async ({ page }) => {
@@ -34,9 +34,9 @@ test.describe.serial("recruit journey", () => {
     await page.goto(`${appHost}/platform/${encodeURIComponent(key)}/schools?new=1`);
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible({ timeout: 20_000 });
-    await dialog.getByLabel(/^name/i).fill(` School`);
+    await dialog.getByLabel(/^name/i).fill(`${stamp} School`);
     await dialog.getByRole("button", { name: /create|save|add school/i }).click();
-    await expect(page.getByText(` School`).first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(`${stamp} School`).first()).toBeVisible({ timeout: 20_000 });
   });
 
   test("C3 · open an application, see it on the board, mark it enrolled", async ({ page }) => {
@@ -44,18 +44,15 @@ test.describe.serial("recruit journey", () => {
     await page.goto(`${appHost}/platform/${encodeURIComponent(key)}/applications?new=1`);
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible({ timeout: 20_000 });
-    await dialog.getByLabel(/^title/i).fill(` Application`);
+    await dialog.getByLabel(/^title/i).fill(`${stamp} Application`);
     // Pick the person created in C1.
-    await dialog
-      .getByRole("button", { name: /select a prospect|choose a prospect|prospect/i })
-      .first()
-      .click();
+    await dialog.getByRole("button", { name: /search for a prospect/i }).click();
     await page
       .getByPlaceholder(/search/i)
       .last()
       .fill(stamp);
     await page
-      .getByRole("option", { name: new RegExp(` Prospect`) })
+      .getByRole("option", { name: new RegExp(`${stamp} Prospect`) })
       .first()
       .click();
     await dialog.getByRole("button", { name: /open application|create|save/i }).click();
@@ -75,7 +72,11 @@ test.describe.serial("recruit journey", () => {
       .getByPlaceholder(/search/i)
       .first()
       .fill(stamp);
-    await page.getByRole("row").filter({ hasText: ` Prospect` }).first().click();
+    await page
+      .getByRole("row")
+      .filter({ hasText: `${stamp} Prospect` })
+      .first()
+      .click();
     await page.waitForURL((url) => /\/prospects\/[0-9a-f-]{36}/.test(url.pathname), {
       timeout: 20_000,
     });

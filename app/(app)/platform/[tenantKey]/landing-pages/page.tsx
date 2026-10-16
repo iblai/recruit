@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Copy, ExternalLink, Globe, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
@@ -31,9 +31,10 @@ import { useBreadcrumbs } from "@/components/crm/breadcrumbs";
 import { LandingPageDialog } from "@/components/recruit/landing-pages/landing-page-dialog";
 import { useSession } from "@/hooks/use-session";
 import config from "@/lib/iblai/config";
+import { errorMessage, useListWebFormSubmissionsQuery } from "@/lib/crm/api";
 import { formatRelative } from "@/lib/crm/format";
 import { landingPageUrl, validateLandingPage, type LandingPage } from "@/lib/recruit/landing-pages";
-import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
+import { useLandingPages } from "@/lib/recruit/use-landing-pages";
 
 export default function LandingPagesPage() {
   return (
@@ -43,16 +44,23 @@ export default function LandingPagesPage() {
   );
 }
 
+/** How many submissions a page has received. */
+function SubmissionCount({ slug }: { slug: string }) {
+  const { data } = useListWebFormSubmissionsQuery({ slug, page_size: 1 });
+  return <>{data ? data.count : "—"}</>;
+}
+
 /**
- * The public forms this organization publishes. Each row is a page in the
- * org's metadata; Publish flips it live at `/p/<org>/<slug>` and starts
- * turning submissions into prospects.
+ * The public forms this organization publishes. Each row is a CRM web form;
+ * Publish flips it live at `/p/<org>/<slug>` and starts turning submissions
+ * into prospects.
  */
 function LandingPagesView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { tenantKey, href, isAdmin } = useSession();
-  const { settings, update, isLoading, isSaving } = useRecruitSettings();
+  const { pages, loaded, isLoading, error, create, setPublished, remove, isSaving } =
+    useLandingPages();
   const [createOpen, setCreateOpen] = useState(false);
   const [toDelete, setToDelete] = useState<LandingPage | null>(null);
 
@@ -64,33 +72,27 @@ function LandingPagesView() {
     router.replace(window.location.pathname);
   }, [searchParams, router]);
 
-  const pages = useMemo(
-    () => [...(settings.landingPages ?? [])].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [settings.landingPages],
-  );
   const appUrl = config.appUrl();
 
-  const save = async (next: LandingPage[], message: string) => {
+  const run = async (action: () => Promise<unknown>, message: string) => {
     try {
-      await update({ landingPages: next });
+      await action();
       toast.success(message);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not save");
+      toast.error(errorMessage(e, "Could not save"));
     }
   };
 
   const togglePublished = (page: LandingPage, on: boolean) => {
     if (on) {
-      const issues = validateLandingPage(page);
+      const issues = validateLandingPage(page, { publish: true });
       if (issues.length) {
         toast.error(`Fix before publishing: ${issues[0].message}`);
         return;
       }
     }
-    void save(
-      pages.map((p) =>
-        p.slug === page.slug ? { ...p, published: on, updatedAt: new Date().toISOString() } : p,
-      ),
+    void run(
+      () => setPublished(page.slug, on),
       on ? `“${page.title}” is live` : `“${page.title}” unpublished`,
     );
   };
@@ -104,20 +106,8 @@ function LandingPagesView() {
     let slug = `${page.slug}-copy`;
     let n = 2;
     while (pages.some((p) => p.slug === slug)) slug = `${page.slug}-copy-${n++}`;
-    const now = new Date().toISOString();
-    void save(
-      [
-        ...pages,
-        {
-          ...page,
-          slug,
-          title: `${page.title} (copy)`,
-          published: false,
-          submissions: 0,
-          createdAt: now,
-          updatedAt: now,
-        },
-      ],
+    void run(
+      () => create({ ...page, slug, title: `${page.title} (copy)`, published: false }),
       "Page duplicated as a draft",
     );
   };
@@ -154,6 +144,15 @@ function LandingPagesView() {
       <div className="flex-1 overflow-auto p-4 md:p-6">
         {isLoading ? (
           <Skeleton className="h-64 w-full rounded-xl" />
+        ) : error ? (
+          <EmptyState
+            icon={<Globe />}
+            title="Landing pages are unavailable"
+            description={errorMessage(
+              error,
+              "The platform did not return this organization’s pages.",
+            )}
+          />
         ) : pages.length === 0 ? (
           <EmptyState
             icon={<Globe />}
@@ -217,7 +216,7 @@ function LandingPagesView() {
                         )}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
-                        {page.submissions ?? 0}
+                        <SubmissionCount slug={page.slug} />
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
                         {formatRelative(page.updatedAt)}
@@ -281,7 +280,10 @@ function LandingPagesView() {
                             >
                               <ExternalLink /> Open public page
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => duplicate(page)} disabled={!isAdmin}>
+                            <DropdownMenuItem
+                              onClick={() => duplicate(page)}
+                              disabled={!isAdmin || !loaded}
+                            >
                               <Copy /> Duplicate
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
@@ -315,10 +317,7 @@ function LandingPagesView() {
         loading={isSaving}
         onConfirm={async () => {
           if (!toDelete) return;
-          await save(
-            pages.filter((p) => p.slug !== toDelete.slug),
-            "Page deleted",
-          );
+          await run(() => remove(toDelete.slug), "Page deleted");
           setToDelete(null);
         }}
       />

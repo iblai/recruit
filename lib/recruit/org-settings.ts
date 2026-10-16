@@ -4,13 +4,13 @@
  *
  * It holds everything ibl.ai/recruit needs once per organization and that is
  * safe to be public — the Chief of Staff agent id, the registered MCP server
- * id, the landing pages, the institution's display settings. PUT replaces the
+ * id, the institution's display settings. Landing pages are CRM web forms.
+ * PUT replaces the
  * whole object, so every writer GETs, merges with `mergeRecruitSettings`, and
  * PUTs. Pure module: no React, no SDK; shared by the browser hook, the route
  * handlers and the CLI scripts.
  */
 import { APP_SLUG } from "./vocabulary";
-import type { LandingPage } from "./landing-pages";
 
 export interface RecruitSettings {
   /** The Chief of Staff agent (`unique_id`) members chat with. */
@@ -19,6 +19,8 @@ export interface RecruitSettings {
   mcpServerId?: number;
   /** When an admin last ran the setup. */
   setupCompletedAt?: string;
+  /** What the tools' key may do: the CRM User role, or everything its admin may. */
+  toolsAccess?: "crm-user" | "owner";
   /** The institution's name as prospects should see it. */
   institutionName?: string;
   /** Logo shown on landing pages (https URL). */
@@ -27,7 +29,6 @@ export interface RecruitSettings {
   accentColor?: string;
   /** Reply-to shown to prospects after they submit a form. */
   contactEmail?: string;
-  landingPages?: LandingPage[];
   [key: string]: unknown;
 }
 

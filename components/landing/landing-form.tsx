@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import type { FormField, LandingPage } from "@/lib/recruit/landing-pages";
-import { pickUtm } from "@/lib/recruit/landing-pages";
-
-type Issue = { key: string; message: string };
+import config from "@/lib/iblai/config";
+import type { FormField, LandingPage, SubmissionIssue } from "@/lib/recruit/landing-pages";
+import { pickUtm, submissionOutcome } from "@/lib/recruit/landing-pages";
 
 /**
  * The prospect-facing form. Plain controlled inputs (no SDK, no shadcn — this
  * bundle must stay tiny and work with no session), a honeypot, per-field
- * errors from the server, and a success state that replaces the form.
+ * errors from the platform, and a success state that replaces the form. It
+ * submits to the platform's public web-form endpoint, no credential.
  * `preview` renders without submitting (the in-app editor uses it).
  */
 export function LandingForm({
@@ -25,7 +25,7 @@ export function LandingForm({
 }) {
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [website, setWebsite] = useState("");
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [issues, setIssues] = useState<SubmissionIssue[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<{ title: string; message: string } | null>(null);
@@ -48,26 +48,20 @@ export function LandingForm({
     try {
       const utm = pickUtm(new URLSearchParams(window.location.search));
       const res = await fetch(
-        `/api/public/forms/${encodeURIComponent(org)}/${encodeURIComponent(page.slug)}`,
+        `${config.dmUrl()}/api/crm/orgs/${encodeURIComponent(org)}/web-forms/${encodeURIComponent(page.slug)}/submissions/`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ answers: values, website, utm, pageUrl: window.location.href }),
+          body: JSON.stringify({ answers: values, website, utm, page_url: window.location.href }),
         },
       );
-      const data = (await res.json().catch(() => ({}))) as {
-        ok?: boolean;
-        title?: string;
-        message?: string;
-        error?: string;
-        issues?: Issue[];
-      };
-      if (!res.ok || !data.ok) {
-        setIssues(Array.isArray(data.issues) ? data.issues : []);
-        setError(data.error || "Something went wrong. Please try again.");
+      const outcome = submissionOutcome(res.status, await res.json().catch(() => null));
+      if (!outcome.ok) {
+        setIssues(outcome.issues);
+        setError(outcome.message);
         return;
       }
-      setDone({ title: data.title ?? "Thanks", message: data.message ?? "" });
+      setDone({ title: page.successTitle || "Thanks", message: page.successMessage ?? "" });
     } catch {
       setError("We could not reach the server. Check your connection and try again.");
     } finally {
@@ -177,11 +171,12 @@ function Field({
   onChange: (v: string | boolean) => void;
 }) {
   const id = `lp-${field.key}`;
+  const kind = fieldKind(field);
   const wide =
     field.type === "textarea" ||
     field.type === "checkbox" ||
-    field.mapTo === "school" ||
-    field.mapTo === "program";
+    kind === "school" ||
+    kind === "program";
   const base =
     "mt-1.5 block w-full rounded-lg border bg-white px-3 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2";
   const border = error ? "border-rose-400 focus:ring-rose-200" : "border-gray-300";
@@ -280,8 +275,13 @@ function Field({
   );
 }
 
+/** The mapping, or on the public page (which gets none) the key the default fields share with it. */
+function fieldKind(field: FormField): string {
+  return field.mapTo ?? field.key;
+}
+
 function autoCompleteFor(field: FormField): string | undefined {
-  switch (field.mapTo) {
+  switch (fieldKind(field)) {
     case "first_name":
       return "given-name";
     case "last_name":
@@ -299,6 +299,6 @@ function autoCompleteFor(field: FormField): string | undefined {
     case "country":
       return "country-name";
     default:
-      return undefined;
+      return field.type === "email" ? "email" : field.type === "tel" ? "tel" : undefined;
   }
 }

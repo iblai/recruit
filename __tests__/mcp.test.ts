@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { McpServer, bearerToken, textResult, tokensEqual, validateArgs } from "../lib/mcp/protocol";
+import { McpServer, bearerToken, textResult, validateArgs } from "../lib/mcp/protocol";
 import { RECRUIT_TOOLS, createRecruitServer, type ToolContext } from "../lib/mcp/tools";
+import type { WebFormInput } from "../lib/crm/types";
+import { newLandingPage, toWebForm } from "../lib/recruit/landing-pages";
 
 type Ctx = { calls: string[] };
 
@@ -36,7 +38,7 @@ const post = (body: unknown, token = "secret-token-1234") =>
     headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
-const auth = (req: Request) => tokensEqual(bearerToken(req), "secret-token-1234");
+const auth = (req: Request) => bearerToken(req) === "secret-token-1234";
 
 describe("McpServer over Streamable HTTP", () => {
   it("initializes with a negotiated protocol version", async () => {
@@ -143,6 +145,8 @@ describe("McpServer over Streamable HTTP", () => {
       )
     ).json()) as unknown[];
     expect(batch).toHaveLength(1);
+    const pings = Array.from({ length: 11 }, (_, i) => ({ jsonrpc: "2.0", id: i, method: "ping" }));
+    expect((await s.handleHttp(post(pings), { calls: [] }, auth)).status).toBe(400);
     const garbage = new Request("http://localhost/x", {
       method: "POST",
       headers: { authorization: "Bearer secret-token-1234" },
@@ -165,9 +169,6 @@ describe("McpServer over Streamable HTTP", () => {
     expect(
       (await s.handleHttp(new Request("http://localhost/x"), { calls: [] }, auth)).status,
     ).toBe(405);
-    expect(tokensEqual("abc", "abc")).toBe(true);
-    expect(tokensEqual("abc", "abd")).toBe(false);
-    expect(tokensEqual("", "")).toBe(false);
   });
 });
 
@@ -214,6 +215,7 @@ describe("recruitment tools", () => {
   it("daily_brief computes due / overdue / stale / deadlines from the CRM", async () => {
     const now = new Date("2026-10-12T15:00:00Z");
     const day = 86_400_000;
+    const since: (string | undefined)[] = [];
     const crm = {
       listPipelines: async () => [
         {
@@ -275,40 +277,26 @@ describe("recruitment tools", () => {
         },
         { id: 3, type: "note", title: "Unscheduled", schedule_from: null, is_done: false },
       ],
-      listPersons: async () => ({
-        count: 3,
-        next_page: null,
-        previous_page: null,
-        results: [
-          {
-            id: "p1",
-            name: "Ada",
-            created_at: new Date(now.getTime() - day).toISOString(),
-            tags: [],
-          },
-          {
-            id: "p2",
-            name: "Bob",
-            created_at: new Date(now.getTime() - 30 * day).toISOString(),
-            tags: [],
-          },
-        ],
-      }),
+      // Counts come from the platform, not from a page of rows.
+      listPersons: async (params: { created_at__gte?: string }) => {
+        since.push(params.created_at__gte);
+        return {
+          count: params.created_at__gte ? 1 : 3,
+          next_page: null,
+          previous_page: null,
+          results: [],
+        };
+      },
     };
-    const ctx = {
-      org: "o",
-      crm,
-      appUrl: "https://x",
-      readSettings: async () => ({}),
-      writeSettings: async () => {},
-      now: () => now,
-    } as unknown as ToolContext;
+    const ctx = { org: "o", crm, appUrl: "https://x", now: () => now } as unknown as ToolContext;
     const out = (await RECRUIT_TOOLS.find((t) => t.name === "daily_brief")!.handler(
       {},
       ctx,
     )) as Record<string, unknown>;
     expect(out.open_applications).toBe(2);
+    expect(out.prospects_total).toBe(3);
     expect(out.new_inquiries_7d).toBe(1);
+    expect(since).toEqual([undefined, new Date(now.getTime() - 7 * day).toISOString()]);
     expect((out.due_today as unknown[]).length).toBe(1);
     expect((out.overdue as unknown[]).length).toBe(1);
     expect((out.stale_applications as { id: number }[]).map((d) => d.id)).toEqual([1]);
@@ -318,28 +306,108 @@ describe("recruitment tools", () => {
     ).toEqual([1, 1]);
   });
 
-  it("create_landing_page drafts a page into the org settings", async () => {
-    let written: Record<string, unknown> | null = null;
+  const tool = (name: string) => RECRUIT_TOOLS.find((t) => t.name === name)!;
+
+  it("create_landing_page drafts one web form", async () => {
+    const forms: WebFormInput[] = [];
+    const crm = {
+      listWebForms: async () => forms,
+      createWebForm: async (body: WebFormInput) => {
+        forms.push(body);
+        return body;
+      },
+    };
     const ctx = {
       org: "northfield",
-      crm: {},
+      crm,
       appUrl: "https://recruit.example.edu",
-      readSettings: async () => ({ landingPages: [] }),
-      writeSettings: async (patch: Record<string, unknown>) => {
-        written = patch;
-      },
     } as unknown as ToolContext;
-    const out = (await RECRUIT_TOOLS.find((t) => t.name === "create_landing_page")!.handler(
-      { title: "Fall Open House", term: "Fall 2027" },
+    const out = (await tool("create_landing_page").handler(
+      { title: "Fall Open House", term: "Fall 2027", funnel_code: "admissions" },
       ctx,
     )) as { url: string; published: boolean };
     expect(out.url).toBe("https://recruit.example.edu/p/northfield/fall-open-house");
     expect(out.published).toBe(false);
-    expect((written!.landingPages as unknown[]).length).toBe(1);
-    const dupe = await RECRUIT_TOOLS.find((t) => t.name === "create_landing_page")!.handler(
-      { title: "Fall Open House" },
-      { ...ctx, readSettings: async () => written! } as ToolContext,
-    );
+    expect(forms).toHaveLength(1);
+    expect(forms[0]).toMatchObject({
+      slug: "fall-open-house",
+      name: "Fall Open House",
+      is_published: false,
+      routing: {
+        create_deal: true,
+        pipeline_code: "admissions",
+        deal_metadata: { term: "Fall 2027" },
+      },
+    });
+    expect(forms[0].fields?.find((f) => f.key === "email")?.maps_to).toEqual([
+      "person.primary_email",
+    ]);
+    const dupe = await tool("create_landing_page").handler({ title: "Fall Open House" }, ctx);
     expect((dupe as { isError: boolean }).isError).toBe(true);
+    expect(forms).toHaveLength(1);
+  });
+
+  it("list_landing_pages counts each page's submissions", async () => {
+    const page = newLandingPage({ title: "Open House", published: true });
+    const form = {
+      ...toWebForm(page),
+      id: 1,
+      platform: 1,
+      created_at: "2026-10-16T10:00:00Z",
+      updated_at: "2026-10-16T10:00:00Z",
+    };
+    const crm = {
+      listWebForms: async () => [form],
+      countWebFormSubmissions: async (slug: string) => (slug === "open-house" ? 4 : 0),
+    };
+    const out = (await tool("list_landing_pages").handler({}, {
+      org: "northfield",
+      crm,
+      appUrl: "https://recruit.example.edu",
+    } as unknown as ToolContext)) as { landing_pages: Record<string, unknown>[] };
+    expect(out.landing_pages).toEqual([
+      expect.objectContaining({
+        slug: "open-house",
+        published: true,
+        submissions: 4,
+        url: "https://recruit.example.edu/p/northfield/open-house",
+      }),
+    ]);
+  });
+
+  it("update_prospect merges recruitment fields instead of replacing them", async () => {
+    const sent: { patch?: unknown; body?: unknown } = {};
+    const person = { id: "p1", name: "Ada", tags: [], created_at: "2026-10-01T00:00:00Z" };
+    const crm = {
+      updatePerson: async (_id: string, body: unknown) => {
+        sent.body = body;
+        return person;
+      },
+      patchMetadata: async (host: string, id: string, patch: unknown) => {
+        expect([host, id]).toEqual(["persons", "p1"]);
+        sent.patch = patch;
+        return { ...person, metadata: { graduation_year: "2027" } };
+      },
+      getPerson: async () => person,
+    };
+    const ctx = { org: "o", crm, appUrl: "https://x" } as unknown as ToolContext;
+    const out = (await tool("update_prospect").handler(
+      { prospect_id: "p1", fields: { graduation_year: "2027", residency: "", gpa: null } },
+      ctx,
+    )) as { prospect: Record<string, unknown> };
+    expect(sent.patch).toEqual({ graduation_year: "2027", residency: null, gpa: null });
+    expect(sent.body).toBeUndefined();
+    expect(out.prospect.graduation_year).toBe("2027");
+  });
+
+  it("list_team lists the CRM's members", async () => {
+    const team = [{ id: 3, username: "kim", name: "Kim Lee", email: null, is_admin: false }];
+    const crm = { listMembers: async (query?: string) => (query === "kim" ? team : []) };
+    const out = await tool("list_team").handler({ query: "kim" }, {
+      org: "o",
+      crm,
+      appUrl: "https://x",
+    } as unknown as ToolContext);
+    expect(out).toEqual({ team });
   });
 });

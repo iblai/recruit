@@ -29,7 +29,8 @@ your operator otherwise).
 Nothing is required against hosted `iblai.app`. Copy `.env.example` to
 `.env.local` to override the service URLs (self-hosting) or the community org.
 `iblai.env` holds the platform shorthand used by the vibe skills
-(`DOMAIN`, `PLATFORM`, `TOKEN`) — it is gitignored.
+(`DOMAIN`, `PLATFORM`, `IBLAI_USERNAME`) — it is gitignored, and like
+`.env.local` it holds no secret.
 
 ## How sign-in and organizations work
 
@@ -51,11 +52,13 @@ Nothing is required against hosted `iblai.app`. Copy `.env.example` to
    `handleTenantSwitch`, which clears storage, broadcasts to other tabs and
    re-enters the Auth SPA with `tenant=<new>`.
 
-The app also needs two server secrets in `.env.local`: `IBLAI_API_KEY` (the
-organization's Platform API Token — public landing-page submissions and the
-Chief of Staff's tools run with it) and `RECRUIT_MCP_TOKEN` (the bearer secret
-the platform presents to `/api/mcp/<org>`). `NEXT_PUBLIC_APP_URL` must be the
-public https origin in production.
+The app holds no server secrets: admin routes act with the caller's own
+session, and the Chief of Staff's tools act with the `recruit-tools` key agent
+setup mints and the platform presents (see `docs/chief-of-staff.md`).
+`pnpm seed:demo` asks for the credential it acts with — an org admin's Platform
+API key, or `Token <session token>` to act as yourself — on hidden input (or a
+pipe) and keeps it nowhere. `NEXT_PUBLIC_APP_URL` must be the public https
+origin in production.
 
 The CRM API (`lib/crm/api.ts`) sends `Authorization: Token <dm_token>` to
 `https://api.iblai.app/dm/api/crm/…`; the platform infers the organization

@@ -103,7 +103,7 @@ export default function FunnelDashboardPage() {
           ) : (
             <>
               {/* ------------------------------------------------- stats */}
-              {data.isLoading && data.deals.length === 0 ? (
+              {data.isLoading ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                   {Array.from({ length: 6 }, (_, i) => (
                     <Skeleton key={i} className="h-24 rounded-xl" />

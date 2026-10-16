@@ -32,12 +32,14 @@ import { EntityAvatar } from "@/components/crm/entity-avatar";
 import { InfoTip } from "@/components/crm/info-tip";
 import { SimpleSelect } from "@/components/crm/simple-select";
 import { OwnerSelect } from "@/components/crm/owner-select";
+import { usePersonSearch } from "@/components/crm/people/use-person-search";
 import { useSession } from "@/hooks/use-session";
 import {
   errorMessage,
   errorStatus,
   useCreateActivityMutation,
   useListDealsQuery,
+  useGetPersonQuery,
   useListPersonsQuery,
   useUpdateActivityMutation,
 } from "@/lib/crm/api";
@@ -135,7 +137,15 @@ export function ActivityDialog({
   const { data: deals } = useListDealsQuery({ page_size: 100, status: "open" }, { skip: !open });
 
   const personRows = useMemo(() => persons?.results ?? [], [persons]);
-  const selectedPerson = personRows.find((p) => p.id === draft.person);
+  const personSearch = usePersonSearch(personRows, !open);
+  // The prospect may not be on the first page the picker lists (an edit, a search).
+  const inFirstPage = personRows.some((p) => p.id === draft.person);
+  const { data: fetchedPerson } = useGetPersonQuery(draft.person, {
+    skip: !open || !draft.person || inFirstPage,
+  });
+  const selectedPerson =
+    personRows.find((p) => p.id === draft.person) ??
+    (fetchedPerson?.id === draft.person ? fetchedPerson : undefined);
   const dealOptions = useMemo(
     () => (deals?.results ?? []).map((d) => ({ value: String(d.id), label: d.title })),
     [deals],
@@ -265,8 +275,13 @@ export function ActivityDialog({
                 <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
               </PopoverTrigger>
               <PopoverContent className="w-72 p-0" align="start">
-                <Command shouldFilter>
-                  <CommandInput autoFocus placeholder="Search prospects…" />
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    autoFocus
+                    placeholder="Search prospects…"
+                    value={personSearch.query}
+                    onValueChange={personSearch.setQuery}
+                  />
                   <CommandList>
                     <CommandEmpty>No prospect found.</CommandEmpty>
                     <CommandGroup>
@@ -280,7 +295,7 @@ export function ActivityDialog({
                         <span className="text-muted-foreground">No prospect</span>
                         {!draft.person ? <Check className="ml-auto size-4 text-[#0058cc]" /> : null}
                       </CommandItem>
-                      {personRows.map((p) => (
+                      {personSearch.rows.map((p) => (
                         <CommandItem
                           key={p.id}
                           value={`${p.name} ${p.primary_email ?? ""}`}

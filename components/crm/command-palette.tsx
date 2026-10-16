@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarCheck2,
@@ -34,9 +26,8 @@ import {
 } from "@/components/ui/command";
 import { EntityAvatar } from "@/components/crm/entity-avatar";
 import { useSession } from "@/hooks/use-session";
-import { useListDealsQuery, useListOrganizationsQuery, useListPersonsQuery } from "@/lib/crm/api";
+import { useSearchQuery } from "@/lib/crm/api";
 import { dealValue, formatCurrency } from "@/lib/crm/format";
-import { readMeta } from "@/lib/recruit/fields";
 
 const PaletteContext = createContext<{ open: () => void; close: () => void }>({
   open: () => {},
@@ -48,8 +39,7 @@ export function useCommandPalette() {
 }
 
 /**
- * ⌘K search across prospects, schools and applications (client-side match
- * over the first pages — the CRM API has no cross-resource search endpoint)
+ * ⌘K search across prospects, schools and applications (the CRM's `/search/`)
  * plus quick navigation and "New …" actions.
  */
 export function CommandPaletteProvider({ children }: { children: ReactNode }) {
@@ -86,42 +76,27 @@ function CommandPalette({
   const router = useRouter();
   const { href } = useSession();
   const [query, setQuery] = useState("");
+  const [debounced, setDebounced] = useState("");
 
-  const { data: people } = useListPersonsQuery({ page_size: 100 }, { skip: !open });
-  const { data: orgs } = useListOrganizationsQuery({ page_size: 100 }, { skip: !open });
-  const { data: deals } = useListDealsQuery({ page_size: 100 }, { skip: !open });
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(query.trim()), 200);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  // `currentData`: never the previous query's matches while this one loads.
+  const { currentData: found } = useSearchQuery(
+    { q: debounced, limit: 6 },
+    { skip: !open || !debounced },
+  );
+  const matchedPeople = found?.persons ?? [];
+  const matchedOrgs = found?.organizations ?? [];
+  const matchedDeals = found?.deals ?? [];
 
   const go = (path: string) => {
     onOpenChange(false);
     setQuery("");
     router.push(href(path));
   };
-
-  const q = query.trim().toLowerCase();
-  const match = (...fields: Array<string | undefined | null>) =>
-    !q || fields.some((f) => f && f.toLowerCase().includes(q));
-
-  const matchedPeople = useMemo(
-    () =>
-      (people?.results ?? [])
-        .filter((p) => match(p.name, p.primary_email, p.job_title))
-        .slice(0, 6),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [people, q],
-  );
-  const matchedOrgs = useMemo(
-    () => (orgs?.results ?? []).filter((o) => match(o.name)).slice(0, 6),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [orgs, q],
-  );
-  const matchedDeals = useMemo(
-    () =>
-      (deals?.results ?? [])
-        .filter((d) => match(d.title, readMeta(d.metadata, "program")))
-        .slice(0, 6),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [deals, q],
-  );
 
   return (
     <CommandDialog

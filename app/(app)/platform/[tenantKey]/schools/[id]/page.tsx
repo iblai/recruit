@@ -35,11 +35,12 @@ import {
   useDetachOrganizationTagMutation,
   useGetOrganizationQuery,
   useListPersonsQuery,
+  usePatchMetadataMutation,
   useUpdateOrganizationMutation,
 } from "@/lib/crm/api";
 import { formatDateTime, formatRelative } from "@/lib/crm/format";
 import type { Address, OrganizationInput } from "@/lib/crm/types";
-import { metaLabel, readMeta, withMeta } from "@/lib/recruit/fields";
+import { metaLabel, metaPatch, readMeta } from "@/lib/recruit/fields";
 import { VOCAB } from "@/lib/recruit/vocabulary";
 
 const CARD =
@@ -65,6 +66,7 @@ export default function OrganizationDetailPage() {
 
   const { data: organization, isLoading, error } = useGetOrganizationQuery(id, { skip: !id });
   const [updateOrganization] = useUpdateOrganizationMutation();
+  const [patchMetadata] = usePatchMetadataMutation();
   const [deleteOrganization, { isLoading: deleting }] = useDeleteOrganizationMutation();
   const [attachTag] = useAttachOrganizationTagMutation();
   const [detachTag] = useDetachOrganizationTagMutation();
@@ -98,9 +100,18 @@ export default function OrganizationDetailPage() {
     await save({ address: next });
   };
 
-  /** `school_type` lives in `metadata`; the API replaces it whole on PATCH. */
-  const saveSchoolType = (value: string) =>
-    save({ metadata: withMeta(organization?.metadata, SCHOOL_TYPE_FIELD, value) });
+  /** `school_type` lives in `metadata`, merged one key at a time. */
+  const saveSchoolType = async (value: string) => {
+    try {
+      await patchMetadata({
+        kind: "organizations",
+        id,
+        patch: metaPatch(SCHOOL_TYPE_FIELD, value),
+      }).unwrap();
+    } catch (err) {
+      toastApiError(err, "Could not save this change");
+    }
+  };
 
   if (errorStatus(error) === 404) {
     return (

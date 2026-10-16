@@ -4,15 +4,13 @@
  * Hosted-iblai.app defaults live in code: with no env vars at all, every
  * service routes through https://api.iblai.app and sign-in goes through
  * https://login.iblai.app. `.env.local` (copied from `.env.example`) holds
- * the optional overrides for self-hosted deployments and the server secrets.
+ * the optional overrides for self-hosted deployments; there are no secrets.
  *
  * Priority: runtime window.__ENV__ → build-time process.env → fallback.
  *
  * This is a MULTI-ORGANIZATION app (the os.ibl.ai model): the organization
  * comes from the URL (`/platform/[tenantKey]/…`), `NEXT_PUBLIC_MAIN_TENANT_KEY`
- * is only the community org used as the last-resort default. Most
- * institutions deploy it for one organization and give the server that
- * organization's Platform API Token (`IBLAI_API_KEY`).
+ * is only the community org used as the last-resort default.
  */
 
 // Static env declarations — Next.js inlines NEXT_PUBLIC_* values at build
@@ -131,19 +129,6 @@ const config = {
    * agent an admin set up is read from the organization's metadata.
    */
   defaultAgentId: () => getEnv("NEXT_PUBLIC_DEFAULT_AGENT_ID", ""),
-
-  // ---------------------------------------------------------------- server
-  // Secrets are not NEXT_PUBLIC_*, so Next.js never inlines them into the
-  // client bundle — in the browser every one of these returns "".
-
-  /** The org's Platform API Token (see `apiKeyFor` in lib/iblai/platform.ts). */
-  apiKey: () => process.env.IBLAI_API_KEY ?? "",
-  /** JSON map `{ "<org key>": "<Platform API Token>" }` for multi-institution deployments. */
-  apiKeys: () => process.env.IBLAI_API_KEYS ?? "",
-  /** The platform username whose authority the server uses for agent setup. */
-  apiUsername: () => process.env.IBLAI_USERNAME ?? "",
-  /** Shared secret the platform's agent runtime presents to `/api/mcp/<org>`. */
-  mcpToken: () => process.env.RECRUIT_MCP_TOKEN ?? "",
 };
 
 export default config;

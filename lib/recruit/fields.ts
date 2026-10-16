@@ -203,8 +203,8 @@ export function coerceMeta(
 }
 
 /**
- * Merge one field into a record's metadata, dropping it when cleared. The CRM
- * API replaces `metadata` on PATCH, so callers send the whole merged object.
+ * Merge one field into a record's metadata, dropping it when cleared — for a
+ * new record's `metadata`. Edits send `metaPatch` to `…/metadata/` instead.
  */
 export function withMeta(
   metadata: Metadata | undefined | null,
@@ -216,6 +216,14 @@ export function withMeta(
   if (value === undefined) delete next[field.key];
   else next[field.key] = value;
   return next;
+}
+
+/** One field as a merge patch for `PATCH …/metadata/`; a cleared field is `null`, which removes it. */
+export function metaPatch(
+  field: MetaField,
+  raw: string | boolean | number | null | undefined,
+): Metadata {
+  return { [field.key]: coerceMeta(field, raw) ?? null };
 }
 
 /** Label for a stored value (select fields show their option label). */

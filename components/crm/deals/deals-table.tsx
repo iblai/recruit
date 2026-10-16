@@ -47,8 +47,8 @@ export function DealsTable({
   deals: Deal[];
   isLoading?: boolean;
   stageById: Map<number, PipelineStage>;
-  personName: (id?: string | null) => string;
-  organizationName: (id?: string | null) => string;
+  personName: (id?: string | null, known?: string | null) => string;
+  organizationName: (id?: string | null, known?: string | null) => string;
 }) {
   const router = useRouter();
   const { href } = useSession();
@@ -79,7 +79,7 @@ export function DealsTable({
             : deals.map((deal) => {
                 const stage = stageById.get(deal.stage);
                 const overdue = isOverdue(deal.expected_close_date, deal.status);
-                const org = organizationName(deal.organization);
+                const org = organizationName(deal.organization, deal.organization_name);
                 const program = PROGRAM_FIELD ? metaLabel(PROGRAM_FIELD, deal.metadata) : "";
                 const term = TERM_FIELD ? metaLabel(TERM_FIELD, deal.metadata) : "";
                 const tuition = dealValue(deal);
@@ -94,8 +94,14 @@ export function DealsTable({
                     </TableCell>
                     <TableCell className="max-w-[12rem]">
                       <span className="flex min-w-0 items-center gap-1.5">
-                        <EntityAvatar name={personName(deal.person)} seed={deal.person} size="xs" />
-                        <span className="truncate">{personName(deal.person)}</span>
+                        <EntityAvatar
+                          name={personName(deal.person, deal.person_name)}
+                          seed={deal.person}
+                          size="xs"
+                        />
+                        <span className="truncate">
+                          {personName(deal.person, deal.person_name)}
+                        </span>
                       </span>
                     </TableCell>
                     <TableCell className="max-w-[12rem]">

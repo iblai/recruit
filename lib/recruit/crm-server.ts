@@ -1,8 +1,8 @@
 /**
  * Server-side CRM client — the same `/dm/api/crm/…` resources the browser
- * slice (`lib/crm/api.ts`) uses, but signed with the organization's Platform
- * API Token. Used where there is no signed-in user: the public landing-page
- * submission route, the Chief of Staff's MCP tools, and the CLI scripts.
+ * slice (`lib/crm/api.ts`) uses, acting with the credential it is given
+ * (`Api-Token …` or `Token …`). Used where there is no browser: the Chief of
+ * Staff's MCP tools and the CLI scripts.
  *
  * Relative imports on purpose: vitest resolves no `@/` alias for lib files.
  */
@@ -11,6 +11,7 @@ import type {
   Activity,
   ActivityInput,
   ActivityListParams,
+  CrmMember,
   Deal,
   DealInput,
   DealListParams,
@@ -26,6 +27,8 @@ import type {
   PipelineStage,
   PipelineStageInput,
   Tag,
+  WebForm,
+  WebFormInput,
 } from "../crm/types";
 
 function qs(params?: object): string {
@@ -41,13 +44,16 @@ function qs(params?: object): string {
 
 /** A client bound to one organization. */
 export class CrmServer {
-  constructor(public readonly org: string) {}
+  constructor(
+    public readonly org: string,
+    private readonly authorization: string,
+  ) {}
 
   private get<T>(path: string) {
-    return platformFetch<T>(`/dm/api/crm${path}`, { org: this.org });
+    return platformFetch<T>(`/dm/api/crm${path}`, this.authorization);
   }
   private send<T>(method: string, path: string, body?: unknown) {
-    return platformFetch<T>(`/dm/api/crm${path}`, { org: this.org, method, body });
+    return platformFetch<T>(`/dm/api/crm${path}`, this.authorization, { method, body });
   }
 
   /** Walk every page of a list (max `maxPages` × 100 rows). */
@@ -69,9 +75,6 @@ export class CrmServer {
   listPersons(params?: PersonListParams) {
     return this.get<Paginated<Person>>(`/persons/${qs(params)}`);
   }
-  allPersons(params?: Omit<PersonListParams, "page" | "page_size">, maxPages = 10) {
-    return this.all<Person>("/persons/", params ?? {}, maxPages);
-  }
   getPerson(id: string) {
     return this.get<Person>(`/persons/${encodeURIComponent(id)}/`);
   }
@@ -87,23 +90,21 @@ export class CrmServer {
       duplicate_ids,
     });
   }
-  /** Find a person by primary email (the API has no email filter — scans recent pages). */
-  async findPersonByEmail(email: string, maxPages = 5): Promise<Person | undefined> {
+  /** The person with this primary email, ignoring case. */
+  async findPersonByEmail(email: string): Promise<Person | undefined> {
     const needle = email.trim().toLowerCase();
     if (!needle) return undefined;
-    let page = 1;
-    for (let i = 0; i < maxPages; i++) {
-      const data = await this.listPersons({ page, page_size: 100 });
-      const hit = data.results.find(
-        (p) =>
-          p.primary_email?.toLowerCase() === needle ||
-          (p.emails ?? []).some((e) => e.toLowerCase() === needle),
-      );
-      if (hit) return hit;
-      if (!data.next_page) break;
-      page = data.next_page;
-    }
-    return undefined;
+    const data = await this.listPersons({ primary_email: needle, page_size: 5 });
+    // A platform without the filter ignores it and returns its first rows.
+    return data.results.find((p) => p.primary_email?.toLowerCase() === needle);
+  }
+  /** RFC 7386 merge into a record's metadata: `null` removes a key. */
+  patchMetadata<T = Person>(
+    host: "persons" | "organizations" | "deals",
+    id: string | number,
+    patch: Record<string, unknown>,
+  ) {
+    return this.send<T>("PATCH", `/${host}/${encodeURIComponent(String(id))}/metadata/`, patch);
   }
 
   // ---------------------------------------------------------- organizations
@@ -122,7 +123,7 @@ export class CrmServer {
     extra: OrganizationInput = {},
   ): Promise<Organization> {
     const clean = name.trim();
-    const existing = await this.listOrganizations({ name: clean, page_size: 50 });
+    const existing = await this.listOrganizations({ name__iexact: clean, page_size: 5 });
     const hit = existing.results.find((o) => o.name.trim().toLowerCase() === clean.toLowerCase());
     if (hit) return hit;
     return this.createOrganization({ name: clean, ...extra });
@@ -143,11 +144,14 @@ export class CrmServer {
   }
   /** The pipeline with `code`, else the default, else the first. */
   async resolvePipeline(code?: string): Promise<Pipeline | undefined> {
-    const all = await this.listPipelines();
+    const first = async (params: object, ok: (p: Pipeline) => boolean = () => true) =>
+      (
+        await this.get<Paginated<Pipeline>>(`/pipelines/${qs({ ...params, page_size: 5 })}`)
+      ).results.find(ok);
     return (
-      (code ? all.find((p) => p.code === code) : undefined) ??
-      all.find((p) => p.is_default) ??
-      all[0]
+      (code ? await first({ code }, (p) => p.code === code) : undefined) ??
+      (await first({ is_default: true }, (p) => !!p.is_default)) ??
+      (await first({}))
     );
   }
 
@@ -156,8 +160,10 @@ export class CrmServer {
     return this.all<LeadSource>("/lead-sources/", {}, 2);
   }
   async findOrCreateLeadSource(code: string, name?: string): Promise<LeadSource> {
-    const all = await this.listLeadSources();
-    const hit = all.find((s) => s.code === code);
+    const found = await this.get<Paginated<LeadSource>>(
+      `/lead-sources/${qs({ code, page_size: 5 })}`,
+    );
+    const hit = found.results.find((s) => s.code === code);
     if (hit) return hit;
     return this.send<LeadSource>("POST", "/lead-sources/", {
       code,
@@ -213,10 +219,13 @@ export class CrmServer {
     return this.all<Tag>("/tags/", {}, 2);
   }
   async findOrCreateTag(name: string, color = "#0058cc"): Promise<Tag> {
-    const all = await this.listTags();
-    const hit = all.find((t) => t.name.toLowerCase() === name.trim().toLowerCase());
+    const clean = name.trim();
+    const found = await this.get<Paginated<Tag>>(
+      `/tags/${qs({ name__iexact: clean, page_size: 5 })}`,
+    );
+    const hit = found.results.find((t) => t.name.toLowerCase() === clean.toLowerCase());
     if (hit) return hit;
-    return this.send<Tag>("POST", "/tags/", { name: name.trim(), color });
+    return this.send<Tag>("POST", "/tags/", { name: clean, color });
   }
   /** Attach a tag; an existing assignment (409) is success. */
   async attachTag(host: "persons" | "organizations" | "deals", id: string | number, tagId: number) {
@@ -228,37 +237,22 @@ export class CrmServer {
   }
 
   // ------------------------------------------------------------------- team
-  /** The organization's members (for counselor assignment). */
-  async listMembers(
-    query?: string,
-  ): Promise<
-    { id: number; username: string; name?: string; email?: string; is_admin?: boolean }[]
-  > {
-    const q = new URLSearchParams({
-      platform_key: this.org,
-      platform_org: this.org,
-      page: "1",
-      page_size: "200",
-      ...(query ? { query } : {}),
-    });
-    const data = await platformFetch<{ results?: unknown }>(
-      `/dm/api/core/platform/users/?${q.toString()}`,
-      { org: this.org },
+  /** The organization's members (for counselor assignment); emails only when the key may see them. */
+  listMembers(query?: string) {
+    return this.all<CrmMember>("/members/", query ? { query } : {}, 5);
+  }
+
+  // -------------------------------------------------------------- web forms
+  listWebForms() {
+    return this.all<WebForm>("/web-forms/", {}, 2);
+  }
+  createWebForm(body: WebFormInput) {
+    return this.send<WebForm>("POST", "/web-forms/", body);
+  }
+  async countWebFormSubmissions(slug: string): Promise<number> {
+    const data = await this.get<Paginated<unknown>>(
+      `/web-forms/${encodeURIComponent(slug)}/submissions/?page_size=1`,
     );
-    const results = data?.results;
-    const rows: Array<Record<string, unknown>> = Array.isArray(results)
-      ? (results as Array<Record<string, unknown>>)
-      : Array.isArray((results as { data?: unknown[] } | undefined)?.data)
-        ? (results as { data: Array<Record<string, unknown>> }).data
-        : [];
-    return rows
-      .map((r) => ({
-        id: Number(r.user_id ?? r.id),
-        username: String(r.username ?? ""),
-        name: typeof r.name === "string" && r.name ? r.name : undefined,
-        email: typeof r.email === "string" ? r.email : undefined,
-        is_admin: typeof r.is_admin === "boolean" ? r.is_admin : undefined,
-      }))
-      .filter((m) => Number.isFinite(m.id));
+    return data.count;
   }
 }

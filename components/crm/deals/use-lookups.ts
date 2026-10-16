@@ -11,10 +11,10 @@ import { sortStages } from "@/lib/crm/format";
 import type { LeadSource, Organization, Person, Pipeline, PipelineStage } from "@/lib/crm/types";
 
 /**
- * The reference data every application surface needs: the prospects and
- * schools an application points at (the API returns ids only), the funnels
- * with their stages, and the sources. All of it is small and heavily cached by
- * RTK Query, so each surface may call this freely.
+ * The reference data every application surface needs: the first prospects and
+ * schools (for pickers), the funnels with their stages, and the sources. All
+ * of it is small and heavily cached by RTK Query, so each surface may call
+ * this freely. Names of a record's prospect and school come with the record.
  */
 export function useDealLookups(options?: { skip?: boolean }) {
   const skip = options?.skip;
@@ -71,9 +71,11 @@ export function useDealLookups(options?: { skip?: boolean }) {
     stageById,
     sourceById,
     defaultPipeline,
-    personName: (id?: string | null) =>
-      id ? (personById.get(id)?.name ?? "Unknown prospect") : "—",
-    organizationName: (id?: string | null) => (id ? (organizationById.get(id)?.name ?? "") : ""),
+    /** `known`: the name the record carries (`person_name`). */
+    personName: (id?: string | null, known?: string | null) =>
+      id ? known || personById.get(id)?.name || "Unknown prospect" : "—",
+    organizationName: (id?: string | null, known?: string | null) =>
+      id ? known || organizationById.get(id)?.name || "" : "",
     stageName: (id?: number | null) => (id ? (stageById.get(id)?.name ?? `Stage #${id}`) : "—"),
     sourceName: (id?: number | null) => (id ? (sourceById.get(id)?.name ?? `Source #${id}`) : ""),
     isLoading: personsLoading || orgsLoading || pipelinesLoading || sourcesLoading,

@@ -48,8 +48,8 @@ export function DealBoard({
   pipeline?: Pipeline;
   deals: Deal[];
   isLoading?: boolean;
-  personName: (id?: string | null) => string;
-  organizationName: (id?: string | null) => string;
+  personName: (id?: string | null, known?: string | null) => string;
+  organizationName: (id?: string | null, known?: string | null) => string;
   className?: string;
 }) {
   const stages = useMemo(() => sortStages(pipeline?.stages ?? []), [pipeline]);
@@ -175,8 +175,11 @@ export function DealBoard({
         {activeDeal ? (
           <DealCard
             deal={activeDeal}
-            personName={personName(activeDeal.person)}
-            organizationName={organizationName(activeDeal.organization)}
+            personName={personName(activeDeal.person, activeDeal.person_name)}
+            organizationName={organizationName(
+              activeDeal.organization,
+              activeDeal.organization_name,
+            )}
             stale={isStale(activeDeal, pipeline.rotten_days)}
             rottenDays={pipeline.rotten_days}
             overlay
@@ -200,8 +203,8 @@ function BoardColumn({
   deals: Deal[];
   stages: PipelineStage[];
   rottenDays?: number;
-  personName: (id?: string | null) => string;
-  organizationName: (id?: string | null) => string;
+  personName: (id?: string | null, known?: string | null) => string;
+  organizationName: (id?: string | null, known?: string | null) => string;
   onMove: (deal: Deal, stageId: number) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
@@ -291,8 +294,8 @@ function BoardColumn({
           <DraggableDealCard
             key={deal.id}
             deal={deal}
-            personName={personName(deal.person)}
-            organizationName={organizationName(deal.organization)}
+            personName={personName(deal.person, deal.person_name)}
+            organizationName={organizationName(deal.organization, deal.organization_name)}
             stale={isStale(deal, rottenDays)}
             rottenDays={rottenDays}
             stages={stages}

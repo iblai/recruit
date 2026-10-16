@@ -24,10 +24,6 @@ const PUBLIC_KEYS = [
   "NEXT_PUBLIC_DEFAULT_CURRENCY",
   "NEXT_PUBLIC_APP_URL",
   "NEXT_PUBLIC_DEFAULT_AGENT_ID",
-  "IBLAI_API_KEYS",
-  "IBLAI_USERNAME",
-  "RECRUIT_MCP_TOKEN",
-  "IBLAI_API_KEY",
 ];
 
 async function loadConfig() {
@@ -191,28 +187,15 @@ describe("getEnv", () => {
   });
 });
 
-describe("apiKey", () => {
-  it("is empty unless the server environment carries it", async () => {
-    const config = await loadConfig();
-    expect(config.apiKey()).toBe("");
-    process.env.IBLAI_API_KEY = "secret-token";
-    expect(config.apiKey()).toBe("secret-token");
-  });
-});
-
 describe("recruit additions", () => {
-  it("exposes the public app url, the agent pin and the server secrets (empty by default)", async () => {
+  it("exposes the public app url and the agent pin (empty by default)", async () => {
     const config = await loadConfig();
     expect(config.appUrl()).toBe("");
     expect(config.defaultAgentId()).toBe("");
-    expect(config.mcpToken()).toBe("");
-    expect(config.apiKeys()).toBe("");
   });
   it("strips trailing slashes from NEXT_PUBLIC_APP_URL", async () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://recruit.example.edu///";
-    process.env.RECRUIT_MCP_TOKEN = "s";
     const config = await loadConfig();
     expect(config.appUrl()).toBe("https://recruit.example.edu");
-    expect(config.mcpToken()).toBe("s");
   });
 });

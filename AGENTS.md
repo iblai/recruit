@@ -13,14 +13,16 @@ it what it is:
 1. **The Chief of Staff** — an ibl.ai agent every team member talks to. Home
    is the conversation (`app/(app)/platform/[tenantKey]/page.tsx`); a side
    panel offers it on every other page. The agent acts through this app's own
-   MCP tool server (`app/api/mcp/[tenantKey]/route.ts` → `lib/mcp/tools.ts`),
-   signed with the organization's Platform API Token.
+   MCP tool server (`app/api/mcp/[tenantKey]/route.ts` → `lib/mcp/tools.ts`)
+   with the `recruit-tools` key agent setup mints.
 2. **The CRM** — the platform's `/dm/api/crm/…` resources (persons,
    organizations, deals, pipelines, activities, tags) in a modern CRM's
    information architecture, shown in admissions vocabulary.
-3. **Landing pages** — public prospect-facing forms at `/p/<org>/<slug>`
-   (`app/(public)/…`), defined in the org's metadata, submitted to
-   `app/api/public/forms/[tenantKey]/[slug]/route.ts`.
+3. **Landing pages** — public prospect-facing pages at `/p/<org>/<slug>`
+   (`app/(public)/…`), each a CRM web form on the platform
+   (`/dm/api/crm/web-forms/`, platform 4.428.0+). Visitors submit straight to
+   the platform's public endpoint, which files the prospect, the application,
+   tags and a note — no credential involved.
 
 Multi-organization (the os.ibl.ai model — architecture B in vibe's
 `docs/auth-model.md`): the organization is in the URL, `/platform/[tenantKey]/…`.
@@ -71,15 +73,21 @@ appears in dialogs, record pages, tools and the landing-page mapping.
    `status`/`closed_at` are server-managed — use `move-stage/`, `won/`, `lost/`.
    Reference stages and funnels by `code`, never by id, in anything persisted
    (landing pages, tools). Lists are page-numbered (`next_page`), max 100.
-4. **Two credentials, never confused.** The browser's `dm_token`
-   (`Authorization: Token`) — who is calling. The org's Platform API Token
-   (`Authorization: Api-Token`, `IBLAI_API_KEY` / `IBLAI_API_KEYS`,
-   `lib/iblai/platform.ts#apiKeyFor`) — server only, for public submissions,
-   the agent's tools and agent setup. `RECRUIT_MCP_TOKEN` is the shared secret
-   the platform presents to `/api/mcp/<org>`; compare it in constant time.
-   Never print or log a token.
+   Find records with the platform's filters (`?primary_email=`,
+   `?name__iexact=`, `?code=`, `?search=`, `/search/`) and keep an equality
+   check on the result; edit `metadata` with the merge patch
+   (`PATCH …/{id}/metadata/`, `metaPatch`), not a whole-object PATCH.
+4. **The server holds no credential.** The browser's `dm_token`
+   (`Authorization: Token`) says who is calling, and admin routes act as the
+   caller — the platform enforces their rights. The tools act with the
+   `recruit-tools` Platform API Token setup mints with the admin's session —
+   scoped to the CRM User policy where RBAC is on, owner mode where it is off;
+   the platform presents it to `/api/mcp/<org>` as `Bearer` and the route
+   forwards it as `Api-Token`, so tools touch the CRM only. `platformFetch`
+   takes the Authorization explicitly. No env file holds a secret; the CLI asks
+   for one. Never print or log a token.
 5. **Org settings = `metadata.apps.recruit`** (agent id, MCP server id,
-   landing pages, branding). Public read, admin write, PUT replaces: always
+   tools access, branding). Public read, admin write, PUT replaces: always
    GET → `mergeRecruitSettings` → PUT (`lib/recruit/org-settings.ts`,
    `use-recruit-settings.ts`, `settings-server.ts`). Nothing secret goes there.
 6. **Tools are the agent's hands.** Add a tool in `lib/mcp/tools.ts` with a
@@ -88,9 +96,9 @@ appears in dialogs, record pages, tools and the landing-page mapping.
    No deletes, no merges. Keep `systemPrompt()` in `lib/recruit/agent.ts` in
    step; re-running setup pushes it.
 7. **Public pages stay public and small.** `app/(public)` must not import the
-   SDK, Redux or anything that needs a session. Render only _published_ pages;
-   unknown or draft pages show the neutral "not available" state. Submissions
-   are validated against the stored definition, never against client input.
+   SDK, Redux or anything that needs a session. Render only _published_ pages
+   (the platform's public read serves nothing else); unknown or draft pages
+   show the neutral "not available" state.
 8. **Brand.** Primary `#0058cc`, tint `#eef6fc`, gradient CTA
    `className="ibl-button-primary"`, white cards with
    `border-[var(--border-color,#e5e7eb)]`. The house shell: Open Sans on the
@@ -110,21 +118,21 @@ appears in dialogs, record pages, tools and the landing-page mapping.
 
 ## Where things are
 
-| Concern                                  | File                                                                                                         |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Config, env, service URLs                | `lib/iblai/config.ts`                                                                                        |
-| Org resolution, admin check, hrefs       | `lib/iblai/tenant.ts`, `hooks/use-session.ts`                                                                |
-| Server: Api-Token per org, verify caller | `lib/iblai/platform.ts`                                                                                      |
-| Provider chain (+ service worker)        | `providers/iblai-providers.tsx`                                                                              |
-| Vocabulary · recruitment fields          | `lib/recruit/vocabulary.ts`, `lib/recruit/fields.ts`                                                         |
-| Org settings namespace                   | `lib/recruit/org-settings.ts` · `use-recruit-settings.ts` · `settings-server.ts`                             |
-| Chief of Staff: prompt + setup           | `lib/recruit/agent.ts`, `app/api/admin/agent/route.ts`, `scripts/setup-agent.ts`                             |
-| Chief of Staff: UI                       | `components/recruit/chief-of-staff/*` (chat, brief, assistant-panel, setup-card)                             |
-| MCP server + tools                       | `lib/mcp/protocol.ts`, `lib/mcp/tools.ts`, `app/api/mcp/[tenantKey]/route.ts`                                |
-| Server CRM client                        | `lib/recruit/crm-server.ts`                                                                                  |
-| Landing pages: model, submission         | `lib/recruit/landing-pages.ts`, `lib/recruit/submission.ts`, `app/api/public/forms/…`                        |
-| Landing pages: UI                        | `components/landing/*` (public), `components/recruit/landing-pages/*` (editor), `app/(app)/…/landing-pages/` |
-| CRM data (browser)                       | `lib/crm/api.ts`, `lib/crm/types.ts`, `lib/crm/format.ts`                                                    |
-| Shell                                    | `app/(app)/platform/[tenantKey]/layout.tsx`, `components/crm/app-sidebar.tsx`, `top-bar.tsx`                 |
-| Record widgets                           | `components/crm/*.tsx` (tag picker, counselor select, inline fields, timeline)                               |
-| Native shell                             | `src-tauri/`                                                                                                 |
+| Concern                               | File                                                                                                         |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Config, env, service URLs             | `lib/iblai/config.ts`                                                                                        |
+| Org resolution, admin check, hrefs    | `lib/iblai/tenant.ts`, `hooks/use-session.ts`                                                                |
+| Server: platform fetch, verify caller | `lib/iblai/platform.ts`                                                                                      |
+| Provider chain (+ service worker)     | `providers/iblai-providers.tsx`                                                                              |
+| Vocabulary · recruitment fields       | `lib/recruit/vocabulary.ts`, `lib/recruit/fields.ts`                                                         |
+| Org settings namespace                | `lib/recruit/org-settings.ts` · `use-recruit-settings.ts` · `settings-server.ts`                             |
+| Chief of Staff: prompt + setup        | `lib/recruit/agent.ts`, `app/api/admin/agent/route.ts`                                                       |
+| Chief of Staff: UI                    | `components/recruit/chief-of-staff/*` (chat, brief, assistant-panel, setup-card)                             |
+| MCP server + tools                    | `lib/mcp/protocol.ts`, `lib/mcp/tools.ts`, `app/api/mcp/[tenantKey]/route.ts`                                |
+| Server CRM client                     | `lib/recruit/crm-server.ts`                                                                                  |
+| Landing pages: model · web forms      | `lib/recruit/landing-pages.ts` · `use-landing-pages.ts` · `settings-server.ts` (public read)                 |
+| Landing pages: UI                     | `components/landing/*` (public), `components/recruit/landing-pages/*` (editor), `app/(app)/…/landing-pages/` |
+| CRM data (browser)                    | `lib/crm/api.ts`, `lib/crm/types.ts`, `lib/crm/format.ts`                                                    |
+| Shell                                 | `app/(app)/platform/[tenantKey]/layout.tsx`, `components/crm/app-sidebar.tsx`, `top-bar.tsx`                 |
+| Record widgets                        | `components/crm/*.tsx` (tag picker, counselor select, inline fields, timeline)                               |
+| Native shell                          | `src-tauri/`                                                                                                 |
