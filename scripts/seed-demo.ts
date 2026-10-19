@@ -12,6 +12,11 @@
  * prospects are matched by email so a re-run does not duplicate them.
  */
 import { askAuthorization, bootstrap, argValue } from "./_env";
+import {
+  ADMISSIONS_FUNNEL,
+  ADMISSIONS_SOURCES,
+  ADMISSIONS_STAGES,
+} from "../lib/recruit/admissions";
 import { CrmServer } from "../lib/recruit/crm-server";
 import { newLandingPage, landingPageUrl, toWebForm } from "../lib/recruit/landing-pages";
 import { applicationTitle } from "../lib/recruit/fields";
@@ -25,25 +30,6 @@ const appUrl = (
   "http://localhost:3000"
 ).replace(/\/+$/, "");
 const log = (s: string) => console.log(`  • ${s}`);
-
-const STAGES = [
-  { code: "inquiry", name: "Inquiry", probability: 10 },
-  { code: "engaged", name: "Engaged", probability: 25 },
-  { code: "applied", name: "Applied", probability: 45 },
-  { code: "admitted", name: "Admitted", probability: 65 },
-  { code: "deposited", name: "Deposited", probability: 90 },
-  { code: "enrolled", name: "Enrolled", probability: 100, is_won: true },
-  { code: "withdrawn", name: "Withdrawn", probability: 0, is_lost: true },
-];
-
-const SOURCES = [
-  ["college_fair", "College fair"],
-  ["school_visit", "School visit"],
-  ["campus_tour", "Campus tour"],
-  ["common_app", "Common App"],
-  ["referral", "Referral"],
-  ["web", "Website"],
-] as const;
 
 const TAGS = [
   ["Honors", "#7c3aed"],
@@ -192,20 +178,19 @@ async function main() {
 
   // Funnel
   const pipelines = await crm.listPipelines();
-  let funnel = pipelines.find((p) => p.code === "admissions");
+  let funnel = pipelines.find((p) => p.code === ADMISSIONS_FUNNEL.code);
   if (!funnel) {
     funnel = await crm.createPipeline({
+      ...ADMISSIONS_FUNNEL,
       name: `Admissions ${term}`,
-      code: "admissions",
-      // The platform allows one default; the landing page names this funnel by code.
+      // The app allows one default; the landing page names this funnel by code.
       is_default: !pipelines.some((p) => p.is_default),
-      rotten_days: 14,
     });
     log(`Created funnel "${funnel.name}"`);
   } else log(`Funnel "${funnel.name}" exists`);
   const existingStages = new Map((funnel.stages ?? []).map((s) => [s.code, s]));
   const stageByCode = new Map<string, number>();
-  for (const [i, s] of STAGES.entries()) {
+  for (const [i, s] of ADMISSIONS_STAGES.entries()) {
     const have = existingStages.get(s.code);
     if (have) {
       stageByCode.set(s.code, have.id);
@@ -218,7 +203,7 @@ async function main() {
 
   // Sources, tags, schools
   const sources = new Map<string, number>();
-  for (const [code, name] of SOURCES)
+  for (const { code, name } of ADMISSIONS_SOURCES)
     sources.set(code, (await crm.findOrCreateLeadSource(code, name)).id);
   const tags = new Map<string, number>();
   for (const [name, color] of TAGS) tags.set(name, (await crm.findOrCreateTag(name, color)).id);
@@ -230,7 +215,7 @@ async function main() {
     });
     schools.push(o.id);
   }
-  log(`${SOURCES.length} sources, ${TAGS.length} tags, ${SCHOOLS.length} schools`);
+  log(`${ADMISSIONS_SOURCES.length} sources, ${TAGS.length} tags, ${SCHOOLS.length} schools`);
 
   // Prospects + applications + activities
   const sourceCodes = [...sources.keys()];

@@ -18,19 +18,26 @@ import type { LeadSource, Organization, Person, Pipeline, PipelineStage } from "
  */
 export function useDealLookups(options?: { skip?: boolean }) {
   const skip = options?.skip;
-  const { data: persons, isLoading: personsLoading } = useListPersonsQuery(
-    { page_size: 100 },
-    { skip },
-  );
-  const { data: organizations, isLoading: orgsLoading } = useListOrganizationsQuery(
-    { page_size: 100 },
-    { skip },
-  );
-  const { data: pipelines, isLoading: pipelinesLoading } = useListPipelinesQuery(
-    { page_size: 100 },
-    { skip },
-  );
-  const { data: sources, isLoading: sourcesLoading } = useListLeadSourcesQuery(undefined, { skip });
+  const {
+    data: persons,
+    isLoading: personsLoading,
+    error: personsError,
+  } = useListPersonsQuery({ page_size: 100 }, { skip });
+  const {
+    data: organizations,
+    isLoading: orgsLoading,
+    error: orgsError,
+  } = useListOrganizationsQuery({ page_size: 100 }, { skip });
+  const {
+    data: pipelines,
+    isLoading: pipelinesLoading,
+    error: pipelinesError,
+  } = useListPipelinesQuery({ page_size: 100 }, { skip });
+  const {
+    data: sources,
+    isLoading: sourcesLoading,
+    error: sourcesError,
+  } = useListLeadSourcesQuery(undefined, { skip });
 
   const personById = useMemo(
     () => new Map<string, Person>((persons?.results ?? []).map((p) => [p.id, p])),
@@ -79,6 +86,8 @@ export function useDealLookups(options?: { skip?: boolean }) {
     stageName: (id?: number | null) => (id ? (stageById.get(id)?.name ?? `Stage #${id}`) : "—"),
     sourceName: (id?: number | null) => (id ? (sourceById.get(id)?.name ?? `Source #${id}`) : ""),
     isLoading: personsLoading || orgsLoading || pipelinesLoading || sourcesLoading,
+    /** The first lookup that failed, if any. */
+    error: pipelinesError ?? sourcesError ?? personsError ?? orgsError,
   };
 }
 

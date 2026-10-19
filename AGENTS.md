@@ -17,10 +17,12 @@ it what it is:
    with the `recruit-tools` key agent setup mints.
 2. **The CRM** — the platform's `/dm/api/crm/…` resources (persons,
    organizations, deals, pipelines, activities, tags) in a modern CRM's
-   information architecture, shown in admissions vocabulary.
+   information architecture, shown in admissions vocabulary. Recruit sees
+   only its own records (`app=recruit`, crm 1.4.0): the organization's own
+   CRM and other apps never show, and never see recruit's.
 3. **Landing pages** — public prospect-facing pages at `/p/<org>/<slug>`
    (`app/(public)/…`), each a CRM web form on the platform
-   (`/dm/api/crm/web-forms/`, platform 4.428.0+). Visitors submit straight to
+   (`/dm/api/crm/web-forms/`, crm 1.4.0). Visitors submit straight to
    the platform's public endpoint, which files the prospect, the application,
    tags and a note — no credential involved.
 
@@ -77,6 +79,11 @@ appears in dialogs, record pages, tools and the landing-page mapping.
    `?name__iexact=`, `?code=`, `?search=`, `/search/`) and keep an equality
    check on the result; edit `metadata` with the merge patch
    (`PATCH …/{id}/metadata/`, `metaPatch`), not a whole-object PATCH.
+   Every CRM call carries `app=recruit` (`lib/crm/app.ts`, added in the two
+   clients above): recruit writes only once `/overview/` echoes it, refuses
+   any record not its own, and `CrmScopeGate` says so on every page. A new
+   organization has no funnel; Applications offers _Set up admissions_
+   (`lib/recruit/admissions.ts`, also the seed's).
 4. **The server holds no credential.** The browser's `dm_token`
    (`Authorization: Token`) says who is calling, and admin routes act as the
    caller — the platform enforces their rights. The tools act with the
@@ -133,6 +140,7 @@ appears in dialogs, record pages, tools and the landing-page mapping.
 | Landing pages: model · web forms      | `lib/recruit/landing-pages.ts` · `use-landing-pages.ts` · `settings-server.ts` (public read)                 |
 | Landing pages: UI                     | `components/landing/*` (public), `components/recruit/landing-pages/*` (editor), `app/(app)/…/landing-pages/` |
 | CRM data (browser)                    | `lib/crm/api.ts`, `lib/crm/types.ts`, `lib/crm/format.ts`                                                    |
+| Recruit's records only (app scope)    | `lib/crm/app.ts`, `components/crm/scope-gate.tsx`                                                            |
 | Shell                                 | `app/(app)/platform/[tenantKey]/layout.tsx`, `components/crm/app-sidebar.tsx`, `top-bar.tsx`                 |
 | Record widgets                        | `components/crm/*.tsx` (tag picker, counselor select, inline fields, timeline)                               |
 | Native shell                          | `src-tauri/`                                                                                                 |

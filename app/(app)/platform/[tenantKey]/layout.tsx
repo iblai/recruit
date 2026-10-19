@@ -9,6 +9,7 @@ import { TopBar } from "@/components/crm/top-bar";
 import { BreadcrumbProvider } from "@/components/crm/breadcrumbs";
 import { CommandPaletteProvider } from "@/components/crm/command-palette";
 import { AdminModeProvider, useAdminMode } from "@/components/crm/admin-mode";
+import { CrmScopeGate } from "@/components/crm/scope-gate";
 import {
   AssistantPanel,
   AssistantPanelProvider,
@@ -51,7 +52,7 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
                         id="main-content"
                         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
                       >
-                        {children}
+                        <CrmScopeGate>{children}</CrmScopeGate>
                       </main>
                     </AdminGate>
                     <AssistantPanel />

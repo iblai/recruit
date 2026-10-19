@@ -7,6 +7,7 @@
  * Relative imports on purpose: vitest resolves no `@/` alias for lib files.
  */
 import { platformFetch, PlatformError } from "../iblai/platform";
+import { SCOPE_MISSING, confirmScope, isOwnRecords, scopeConfirmed, withApp } from "../crm/app";
 import type {
   Activity,
   ActivityInput,
@@ -49,11 +50,17 @@ export class CrmServer {
     private readonly authorization: string,
   ) {}
 
-  private get<T>(path: string) {
-    return platformFetch<T>(`/dm/api/crm${path}`, this.authorization);
+  // Recruit's records only (`lib/crm/app.ts`): reads refuse another app's, and
+  // writes wait for the platform to confirm it keeps them apart.
+  private async get<T>(path: string) {
+    const data = await platformFetch<T>(`/dm/api/crm${withApp(path)}`, this.authorization);
+    if (!isOwnRecords(path, data)) throw new PlatformError(503, { detail: SCOPE_MISSING });
+    return data;
   }
-  private send<T>(method: string, path: string, body?: unknown) {
-    return platformFetch<T>(`/dm/api/crm${path}`, this.authorization, { method, body });
+  private async send<T>(method: string, path: string, body?: unknown) {
+    if (!scopeConfirmed() && !confirmScope(await this.get("/overview/")))
+      throw new PlatformError(503, { detail: SCOPE_MISSING });
+    return platformFetch<T>(`/dm/api/crm${withApp(path)}`, this.authorization, { method, body });
   }
 
   /** Walk every page of a list (max `maxPages` × 100 rows). */

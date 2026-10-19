@@ -147,6 +147,7 @@ describe("toWebForm / fromWebForm", () => {
 
   it("reads a public form: copy and questions, no mappings", () => {
     const form: PublicWebForm = {
+      app: "recruit",
       slug: "open-house",
       name: "Open House",
       metadata: { headline: "Come see us", highlights: ["A", 3], ctaLabel: "Count me in" },

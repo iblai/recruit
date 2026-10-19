@@ -15,8 +15,15 @@ import { OwnerFilter } from "@/components/crm/deals/owner-filter";
 import { DealBoard } from "@/components/crm/deals/deal-board";
 import { DealsTable } from "@/components/crm/deals/deals-table";
 import { DealDialog } from "@/components/crm/deals/deal-dialog";
+import { useAdminMode } from "@/components/crm/admin-mode";
+import { SetUpAdmissions } from "@/components/recruit/setup-admissions";
 import { useDealLookups } from "@/components/crm/deals/use-lookups";
-import { useListAllDealsQuery, useListDealsQuery, useListTagsQuery } from "@/lib/crm/api";
+import {
+  errorMessage,
+  useListAllDealsQuery,
+  useListDealsQuery,
+  useListTagsQuery,
+} from "@/lib/crm/api";
 import type { DealStatus } from "@/lib/crm/types";
 import { STATUS_LABELS } from "@/lib/recruit/vocabulary";
 
@@ -56,6 +63,8 @@ function DealsPageContent() {
   const [seed, setSeed] = useState<{ person?: string; organization?: string }>({});
 
   const lookups = useDealLookups();
+  const { adminMode } = useAdminMode();
+  const noFunnel = !lookups.isLoading && !lookups.error && lookups.pipelines.length === 0;
   const { data: tags } = useListTagsQuery();
 
   // Remember the view the user picked.
@@ -269,7 +278,31 @@ function DealsPageContent() {
         }
       />
 
-      {isEmpty ? (
+      {lookups.error ? (
+        <div className="flex-1 overflow-auto p-4 md:p-6">
+          <EmptyState
+            icon={<ClipboardList />}
+            title="Applications are unavailable"
+            description={errorMessage(
+              lookups.error,
+              "The platform did not return this organization’s funnels.",
+            )}
+          />
+        </div>
+      ) : noFunnel ? (
+        <div className="flex-1 overflow-auto p-4 md:p-6">
+          <EmptyState
+            icon={<ClipboardList />}
+            title="No admissions funnel yet"
+            description={
+              adminMode
+                ? "Set up the stages an application moves through, from inquiry to enrollment, and the sources prospects come from."
+                : "An admin sets up the admissions funnel before applications can be opened."
+            }
+            action={adminMode ? <SetUpAdmissions sources={lookups.sources} /> : undefined}
+          />
+        </div>
+      ) : isEmpty ? (
         <div className="flex-1 overflow-auto p-4 md:p-6">
           <EmptyState
             icon={<ClipboardList />}

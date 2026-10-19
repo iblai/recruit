@@ -455,6 +455,7 @@ export type WebFormInput = Partial<
 
 /** A published form as `GET /orgs/<org>/web-forms/<slug>/` serves it: no routing, no targets. */
 export interface PublicWebForm {
+  app: string;
   slug: string;
   name: string;
   metadata: Record<string, unknown>;

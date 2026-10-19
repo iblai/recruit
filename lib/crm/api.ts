@@ -11,6 +11,7 @@
 import { createApi, fetchBaseQuery, type FetchArgs } from "@reduxjs/toolkit/query/react";
 import config from "@/lib/iblai/config";
 import { LOCAL_STORAGE_KEYS } from "@/lib/iblai/auth-utils";
+import { CRM_APP, SCOPE_MISSING, confirmScope, isOwnRecords, scopeConfirmed } from "./app";
 import type {
   Activity,
   ActivityInput,
@@ -109,13 +110,33 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
+/** Recruit's records only: `app` on every request, writes once the platform confirms it. */
+const scopedQuery: typeof rawBaseQuery = async (args, api, extra) => {
+  const request = typeof args === "string" ? { url: args } : args;
+  if ((request.method ?? "GET").toUpperCase() !== "GET" && !scopeConfirmed()) {
+    const probe = await rawBaseQuery({ url: "/overview/", params: { app: CRM_APP } }, api, extra);
+    if (probe.error) return probe;
+    if (!confirmScope(probe.data))
+      return { error: { status: "CUSTOM_ERROR", error: SCOPE_MISSING } };
+  }
+  const result = await rawBaseQuery(
+    { ...request, params: { ...request.params, app: CRM_APP } },
+    api,
+    extra,
+  );
+  if (!result.error && !isOwnRecords(request.url, result.data))
+    return { error: { status: "CUSTOM_ERROR", error: SCOPE_MISSING, data: result.data } };
+  return result;
+};
+
 /** Normalize errors to `{ status, detail }` so the UI can toast them. */
 const baseQuery: typeof rawBaseQuery = async (args, api, extra) => {
-  const result = await rawBaseQuery(args, api, extra);
+  const result = await scopedQuery(args, api, extra);
   if (result.error) {
     const data = result.error.data as unknown;
     let detail = "Something went wrong";
-    if (typeof data === "string" && data.trim()) detail = data;
+    if (result.error.status === "CUSTOM_ERROR") detail = result.error.error;
+    else if (typeof data === "string" && data.trim()) detail = data;
     else if (data && typeof data === "object") {
       const d = data as Record<string, unknown>;
       if (typeof d.detail === "string") detail = d.detail;

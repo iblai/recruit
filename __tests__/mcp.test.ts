@@ -347,6 +347,37 @@ describe("recruitment tools", () => {
     expect(forms).toHaveLength(1);
   });
 
+  it("create_application takes an existing source and never creates one", async () => {
+    const deals: Record<string, unknown>[] = [];
+    const crm = {
+      getPerson: async () => ({ id: "p1", name: "Ada King", organization: null, owner: 7 }),
+      resolvePipeline: async () => ({
+        id: 1,
+        name: "Admissions",
+        stages: [{ id: 10, code: "inquiry", name: "Inquiry", sort_order: 0 }],
+      }),
+      listLeadSources: async () => [{ id: 3, code: "college_fair", name: "College fair" }],
+      createDeal: async (body: Record<string, unknown>) => {
+        deals.push(body);
+        return { id: 1, status: "open", ...body };
+      },
+    };
+    const ctx = { org: "o", crm, appUrl: "https://x" } as unknown as ToolContext;
+    const unknown = await tool("create_application").handler(
+      { prospect_id: "p1", source_code: "radio" },
+      ctx,
+    );
+    expect((unknown as { isError: boolean }).isError).toBe(true);
+    expect(JSON.stringify(unknown)).toContain("college_fair");
+    expect(deals).toHaveLength(0);
+    await tool("create_application").handler(
+      { prospect_id: "p1", source_code: "college_fair" },
+      ctx,
+    );
+    expect(deals).toHaveLength(1);
+    expect(deals[0]).toMatchObject({ source: 3, person: "p1", stage: 10 });
+  });
+
   it("list_landing_pages counts each page's submissions", async () => {
     const page = newLandingPage({ title: "Open House", published: true });
     const form = {

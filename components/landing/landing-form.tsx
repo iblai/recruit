@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
+import { withApp } from "@/lib/crm/app";
 import config from "@/lib/iblai/config";
 import type { FormField, LandingPage, SubmissionIssue } from "@/lib/recruit/landing-pages";
 import { pickUtm, submissionOutcome } from "@/lib/recruit/landing-pages";
@@ -48,7 +49,9 @@ export function LandingForm({
     try {
       const utm = pickUtm(new URLSearchParams(window.location.search));
       const res = await fetch(
-        `${config.dmUrl()}/api/crm/orgs/${encodeURIComponent(org)}/web-forms/${encodeURIComponent(page.slug)}/submissions/`,
+        withApp(
+          `${config.dmUrl()}/api/crm/orgs/${encodeURIComponent(org)}/web-forms/${encodeURIComponent(page.slug)}/submissions/`,
+        ),
         {
           method: "POST",
           headers: { "content-type": "application/json" },

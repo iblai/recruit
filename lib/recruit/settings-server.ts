@@ -7,6 +7,7 @@
  * and always GET → merge → PUT so the OS's own keys survive.
  * Relative imports on purpose (vitest, CLI).
  */
+import { CRM_APP, withApp } from "../crm/app";
 import type { PublicWebForm } from "../crm/types";
 import { platformBase, platformFetch } from "../iblai/platform";
 import { mergeRecruitSettings, readRecruitSettings, type RecruitSettings } from "./org-settings";
@@ -14,7 +15,7 @@ import { mergeRecruitSettings, readRecruitSettings, type RecruitSettings } from 
 const enc = encodeURIComponent;
 const metaPath = (org: string) => `/dm/api/core/orgs/${enc(org)}/metadata/`;
 const formPath = (org: string, slug: string) =>
-  `/dm/api/crm/orgs/${enc(org)}/web-forms/${enc(slug)}/`;
+  withApp(`/dm/api/crm/orgs/${enc(org)}/web-forms/${enc(slug)}/`);
 
 const TTL_MS = 60_000;
 const cache = new Map<string, { at: number; value: unknown }>();
@@ -57,13 +58,13 @@ export async function readOrgMetadata(org: string): Promise<Record<string, unkno
   return data?.metadata ?? {};
 }
 
-/** A published landing page as visitors get it; null when unknown or a draft (cached). */
+/** A published landing page of recruit's as visitors get it; null otherwise (cached). */
 export async function readPublicWebForm(org: string, slug: string): Promise<PublicWebForm | null> {
   if (!org || !slug) return null;
   const form = await cached(`form:${org}/${slug}`, () =>
     publicGet<PublicWebForm | null>(formPath(org, slug), null),
   );
-  return form ?? null;
+  return form?.app === CRM_APP ? form : null;
 }
 
 /** Forget the cached copy (after this server wrote the metadata). */

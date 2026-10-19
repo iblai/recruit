@@ -594,7 +594,7 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
         est_net_tuition: { type: "number" },
         source_code: {
           type: "string",
-          description: "Lead-source code, e.g. college_fair; created when missing.",
+          description: "Code of an existing lead source, e.g. college_fair.",
         },
         counselor_id: { type: "integer" },
         notes: { type: "string" },
@@ -618,9 +618,13 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
         : stages.find((s) => !s.is_won && !s.is_lost);
       if (!stage)
         return errorResult(`Stage "${str(args.stage_code)}" is not in funnel "${pipeline.name}".`);
-      const source = str(args.source_code)
-        ? await ctx.crm.findOrCreateLeadSource(str(args.source_code))
-        : undefined;
+      const sourceCode = str(args.source_code);
+      const sources = sourceCode ? await ctx.crm.listLeadSources() : [];
+      const source = sources.find((s) => s.code === sourceCode);
+      if (sourceCode && !source)
+        return errorResult(
+          `Source "${sourceCode}" doesn't exist. Sources: ${sources.map((s) => s.code).join(", ") || "none"}.`,
+        );
       const metadata: Metadata = {};
       if (str(args.program)) metadata.program = str(args.program);
       if (str(args.term)) metadata.term = str(args.term);

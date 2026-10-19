@@ -10,6 +10,7 @@
  * Server-only (acts with the admin's session). Relative imports on
  * purpose: vitest and the CLI resolve no `@/` alias.
  */
+import { withApp } from "../crm/app";
 import { platformFetch as rawPlatformFetch, PlatformError } from "../iblai/platform";
 import { mergeRecruitSettings, readRecruitSettings, type RecruitSettings } from "./org-settings";
 import { invalidateOrgMetadata } from "./settings-server";
@@ -141,7 +142,10 @@ async function mintToolsKey(
     );
     if (scoped?.key) {
       try {
-        await rawPlatformFetch("/dm/api/crm/pipelines/?page_size=1", `Api-Token ${scoped.key}`);
+        await rawPlatformFetch(
+          withApp("/dm/api/crm/pipelines/?page_size=1"),
+          `Api-Token ${scoped.key}`,
+        );
         return { key: scoped.key, access: "crm-user" };
       } catch (e) {
         if (!refused(e)) throw e;

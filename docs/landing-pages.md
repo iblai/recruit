@@ -8,7 +8,8 @@ accent color. Every submission becomes a prospect in the CRM.
 ## Where a page lives
 
 Each page is a **CRM web form** on the platform (`/api/crm/web-forms/`,
-platform 4.428.0+): the copy in its `metadata`, the questions in `fields`,
+crm 1.4.0), one of recruit's own (`app=recruit` on every call, the public
+read and submit included): the copy in its `metadata`, the questions in `fields`,
 where a submission lands in `routing`. `lib/recruit/landing-pages.ts` maps
 the editor's `LandingPage` to it (`toWebForm` / `fromWebForm`); there is no
 database of our own and no server secret. The public route renders a

@@ -62,7 +62,12 @@ origin in production.
 
 The CRM API (`lib/crm/api.ts`) sends `Authorization: Token <dm_token>` to
 `https://api.iblai.app/dm/api/crm/…`; the platform infers the organization
-from that token.
+from that token. Every call also names the app (`app=recruit`,
+`lib/crm/app.ts`): the platform keeps each app's records apart (crm 1.4.0),
+recruit refuses any record that isn't its own and writes only once
+`/overview/` echoes the app. Against an older platform every page says it
+can't open the CRM (`components/crm/scope-gate.tsx`). The seed creates the
+admissions funnel (`lib/recruit/admissions.ts`).
 
 ## Roles
 
