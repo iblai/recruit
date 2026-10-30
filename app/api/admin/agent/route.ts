@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     pinnedByEnv: !!config.defaultAgentId(),
     mcpServerId: settings.mcpServerId ?? null,
     setupCompletedAt: settings.setupCompletedAt ?? null,
-    appUrl: config.appUrl() || req.nextUrl.origin,
+    appUrl: config.publicOrigin() || req.nextUrl.origin,
     username: caller.username,
   });
 }
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (!caller) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   const appUrl =
     (typeof body.appUrl === "string" && /^https?:\/\//.test(body.appUrl) ? body.appUrl : "") ||
-    config.appUrl() ||
+    config.publicOrigin() ||
     req.nextUrl.origin;
   const log: string[] = [];
   try {

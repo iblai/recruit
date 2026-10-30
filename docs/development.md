@@ -43,7 +43,7 @@ Nothing is required against hosted `iblai.app`. Copy `.env.example` to
    stores `axd_token`, `dm_token`, `userData`, `tenants`, `current_tenant`.
    `lib/iblai/sso-redirect.ts` sanitizes the landing path and resets it to `/`
    when it names another organization.
-4. `/` resolves the session's org (`lib/iblai/tenant.ts#resolveDefaultTenant`)
+4. `/` resolves the session's org (`lib/iblai/tenant.ts#pickLandingTenant`)
    and goes to `/platform/<org>`.
 5. `TenantProvider` gets `requestedTenant` from the route and `currentTenant`
    from storage. When they differ it re-authenticates against the requested

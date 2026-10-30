@@ -1,40 +1,70 @@
 /**
- * Redux store: the SDK's RTK Query caches + the slices its components expect,
- * plus our own CRM API slice.
+ * Redux store: every RTK Query API the SDK exports, the plain slices its
+ * components select, and our own CRM API slice. `__tests__/store.test.ts`
+ * names any SDK state this misses.
  */
-import { configureStore } from "@reduxjs/toolkit";
-import { coreApiSlice, mentorReducer, mentorMiddleware } from "@iblai/iblai-js/data-layer";
+import { configureStore, type Middleware, type Reducer } from "@reduxjs/toolkit";
+import * as dataLayer from "@iblai/iblai-js/data-layer";
+import { imagePreviewsReducer } from "@iblai/iblai-js/web-containers/next";
 import {
+  appleRestrictionReducer,
   hostChatReducer,
   chatInputSliceReducer,
   chatSliceReducerShared,
   filesReducer,
+  monetizationSlice,
   rbacReducer,
   subscriptionReducer,
   topBannerReducer,
 } from "@iblai/iblai-js/web-utils";
 import { crmApi } from "@/lib/crm/api";
 
-export const iblaiStore = configureStore({
-  reducer: {
-    [coreApiSlice.reducerPath]: coreApiSlice.reducer,
-    ...mentorReducer,
-    [crmApi.reducerPath]: crmApi.reducer,
+type RtkApi = { reducerPath: string; reducer: Reducer; middleware: Middleware };
 
-    // The SDK selectors hard-code these slice keys — do not rename them.
-    chat: hostChatReducer,
-    chatInput: chatInputSliceReducer,
-    chatSliceShared: chatSliceReducerShared,
-    files: filesReducer,
-    rbac: rbacReducer,
-    subscription: subscriptionReducer,
-    topBanner: topBannerReducer,
-  },
+const isRtkApi = (v: unknown): v is RtkApi =>
+  typeof v === "object" &&
+  v !== null &&
+  "reducerPath" in v &&
+  "middleware" in v &&
+  "injectEndpoints" in v;
+
+// All of them, not mentorReducer's pick: it leaves out mcpApiSlice, which the chat composer queries.
+const sdkApis = [...new Set(Object.values(dataLayer as Record<string, unknown>).filter(isRtkApi))];
+
+const appReducers = {
+  [crmApi.reducerPath]: crmApi.reducer,
+
+  // The SDK selectors hard-code these slice keys — do not rename them.
+  chat: hostChatReducer,
+  chatInput: chatInputSliceReducer,
+  chatSliceShared: chatSliceReducerShared,
+  files: filesReducer,
+  rbac: rbacReducer,
+  subscription: subscriptionReducer,
+  topBanner: topBannerReducer,
+  imagePreviews: imagePreviewsReducer,
+  appleRestriction: appleRestrictionReducer,
+  monetization: monetizationSlice.reducer,
+};
+
+const claimedTwice = sdkApis
+  .map((api) => api.reducerPath)
+  .filter((path, i, paths) => path in appReducers || paths.indexOf(path) !== i);
+if (claimedTwice.length > 0) {
+  throw new Error(`Store reducer paths claimed twice: ${claimedTwice.join(", ")}`);
+}
+
+export const reducer = {
+  ...Object.fromEntries(sdkApis.map((api) => [api.reducerPath, api.reducer])),
+  ...appReducers,
+};
+
+export const iblaiStore = configureStore({
+  reducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ serializableCheck: false })
-      .concat(coreApiSlice.middleware)
-      .concat(crmApi.middleware)
-      .concat(...mentorMiddleware),
+      .concat(...sdkApis.map((api) => api.middleware))
+      .concat(crmApi.middleware),
 });
 
 export type IblaiRootState = ReturnType<typeof iblaiStore.getState>;

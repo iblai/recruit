@@ -26,6 +26,8 @@ export function proxy(request: NextRequest) {
   return applyCsp(request, {
     requestHeaders,
     mode: process.env.NODE_ENV === "development" ? "report-only" : undefined,
+    // The chat uploads attachments straight to the platform's media bucket.
+    connectSrc: ["https://iblai-app-dm-media.s3.amazonaws.com"],
   });
 }
 

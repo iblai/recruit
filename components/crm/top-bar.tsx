@@ -9,6 +9,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useSidebar } from "@iblai/iblai-js/web-containers/next";
 import { UserMenu } from "@/components/crm/user-menu";
 import { AdminModeSwitch } from "@/components/crm/admin-mode-switch";
+import { useAdminMode } from "@/components/crm/admin-mode";
+import { CreditBadge } from "@/components/house/credit-badge";
 import { Breadcrumbs } from "@/components/crm/breadcrumbs";
 import { useAssistantPanel } from "@/components/recruit/chief-of-staff/assistant-panel";
 import { useSession } from "@/hooks/use-session";
@@ -19,12 +21,13 @@ import { cn } from "@/lib/utils";
  * The top bar — the OS's navbar shape and type (h-16, white, `#D0E0FF` hairline,
  * the system font at 14 px medium `#646464`):
  * sidebar toggle + breadcrumbs on the left; the Chief of Staff toggle, the
- * Admin switch, the SDK notification bell and the SDK profile dropdown on
- * the right.
+ * credit badge, the Admin switch, the SDK notification bell and the SDK
+ * profile dropdown on the right.
  */
 export function TopBar() {
   const router = useRouter();
   const { tenantKey, username, isAdmin, href } = useSession();
+  const { adminMode } = useAdminMode();
   const { toggleSidebar, isMobile } = useSidebar();
   const assistant = useAssistantPanel();
 
@@ -81,6 +84,11 @@ export function TopBar() {
             </TooltipContent>
           </Tooltip>
         ) : null}
+        <CreditBadge
+          org={tenantKey}
+          isLiveAdmin={isAdmin && adminMode}
+          className="hidden md:flex"
+        />
         <AdminModeSwitch className="hidden md:flex" />
         {tenantKey && username ? (
           <NotificationDropdown

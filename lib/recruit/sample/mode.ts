@@ -1,6 +1,5 @@
-import config from "../../iblai/config";
+import { isSampleOrg } from "../../iblai/house-journeys";
 import {
-  isTenantAdmin,
   readCurrentTenantKey,
   readUserData,
   readUserId,
@@ -9,11 +8,9 @@ import {
 } from "../../iblai/tenant";
 import type { SampleVisitor } from "./data";
 
-/** Whether this tab browses the sample: the community organization, for anyone who does not administer it. */
+/** Whether this tab browses the sample: the community organization, for everyone. */
 export function sampleSession(pathname: string): boolean {
-  const main = config.mainTenantKey();
-  const org = tenantKeyFromPath(pathname) ?? readCurrentTenantKey();
-  return org === main && !isTenantAdmin(main);
+  return isSampleOrg(tenantKeyFromPath(pathname) ?? readCurrentTenantKey());
 }
 
 /** The signed-in user, who owns part of the sample. */

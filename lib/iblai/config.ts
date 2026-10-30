@@ -107,14 +107,13 @@ const config = {
    * Used for landing-page links and for the URL the platform's agent runtime
    * calls back on. In the browser it falls back to `window.location.origin`.
    */
-  appUrl: () => {
+  publicOrigin: () => {
     const explicit = getEnv("NEXT_PUBLIC_APP_URL").replace(/\/+$/, "");
     if (explicit) return explicit;
     return typeof window !== "undefined" ? window.location.origin : "";
   },
-  /** Where ibl.ai's $0 checkout returns a new organization's admin: the hosted app unless set. */
-  checkoutReturnUrl: () =>
-    getEnv("NEXT_PUBLIC_APP_URL", "https://recruit.iblai.me").replace(/\/+$/, ""),
+  /** This app's public URL: where ibl.ai's $0 checkout returns a new platform's admin. */
+  appUrl: () => getEnv("NEXT_PUBLIC_APP_URL", "https://recruit.iblai.me").replace(/\/+$/, ""),
   supportEmail: () => getEnv("NEXT_PUBLIC_SUPPORT_EMAIL", "support@ibl.ai"),
   helpCenterUrl: () => getEnv("NEXT_PUBLIC_HELP_CENTER_URL", "https://ibl.ai/support"),
   documentationUrl: () =>

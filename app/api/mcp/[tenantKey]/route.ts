@@ -20,7 +20,7 @@ export const dynamic = "force-dynamic";
 const server = createRecruitServer();
 
 function context(org: string, authorization: string): ToolContext {
-  return { org, crm: new CrmServer(org, authorization), appUrl: config.appUrl() };
+  return { org, crm: new CrmServer(org, authorization), appUrl: config.publicOrigin() };
 }
 
 async function handle(req: NextRequest, params: Promise<{ tenantKey: string }>) {

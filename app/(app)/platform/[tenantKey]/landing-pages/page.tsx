@@ -72,7 +72,7 @@ function LandingPagesView() {
     router.replace(window.location.pathname);
   }, [searchParams, router]);
 
-  const appUrl = config.appUrl();
+  const appUrl = config.publicOrigin();
 
   const run = async (action: () => Promise<unknown>, message: string) => {
     try {

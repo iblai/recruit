@@ -130,44 +130,48 @@ describe("readCurrentTenantKey", () => {
   });
 });
 
-describe("resolveDefaultTenant", () => {
-  it("prefers the session's organization", async () => {
-    store.current_tenant = JSON.stringify({ key: "acme" });
-    store.tenant = "globex";
-    store.tenants = JSON.stringify([{ key: "initech" }]);
-    const { resolveDefaultTenant } = await loadTenant();
-    expect(resolveDefaultTenant()).toBe("acme");
+describe("pickLandingTenant", () => {
+  it("prefers the remembered organization unless it is the community one", async () => {
+    const { pickLandingTenant } = await loadTenant();
+    expect(pickLandingTenant("acme", [{ key: "globex" }], "main")).toBe("acme");
+    expect(pickLandingTenant("main", [{ key: "main" }, { key: "globex" }], "main")).toBe("globex");
   });
 
-  it("falls back to the SDK's last organization", async () => {
-    store.tenant = "globex";
-    store.tenants = JSON.stringify([{ key: "initech" }]);
-    const { resolveDefaultTenant } = await loadTenant();
-    expect(resolveDefaultTenant()).toBe("globex");
+  it("falls back to the first organization the user belongs to that is not the community one", async () => {
+    const { pickLandingTenant } = await loadTenant();
+    expect(
+      pickLandingTenant("", [{ key: "main" }, { key: "initech" }, { key: "acme" }], "main"),
+    ).toBe("initech");
   });
 
-  it("then picks the first organization that is not the community org", async () => {
-    store.tenants = JSON.stringify([{ key: "main" }, { key: "initech" }, { key: "acme" }]);
-    const { resolveDefaultTenant } = await loadTenant();
-    expect(resolveDefaultTenant()).toBe("initech");
+  it("lands a user whose only organization is the community one on it, and is null when signed out", async () => {
+    const { pickLandingTenant } = await loadTenant();
+    expect(pickLandingTenant("", [{ key: "main" }], "main")).toBe("main");
+    expect(pickLandingTenant("main", [], "main")).toBeNull();
+    expect(pickLandingTenant("", [], "main")).toBeNull();
   });
 
-  it("then falls back to the first organization, community or not", async () => {
-    store.tenants = JSON.stringify([{ key: "main" }]);
-    const { resolveDefaultTenant } = await loadTenant();
-    expect(resolveDefaultTenant()).toBe("main");
-  });
-
-  it("lands on the community org when the user belongs to none", async () => {
-    const { resolveDefaultTenant } = await loadTenant();
-    expect(resolveDefaultTenant()).toBe("main");
-  });
-
-  it("honors a custom community org key", async () => {
+  it("reads the community key from the configuration by default", async () => {
     process.env.NEXT_PUBLIC_MAIN_TENANT_KEY = "community";
-    store.tenants = JSON.stringify([{ key: "community" }, { key: "acme" }]);
-    const { resolveDefaultTenant } = await loadTenant();
-    expect(resolveDefaultTenant()).toBe("acme");
+    const { pickLandingTenant } = await loadTenant();
+    expect(pickLandingTenant("community", [{ key: "community" }, { key: "acme" }])).toBe("acme");
+  });
+});
+
+describe("readStoredTenantKey", () => {
+  it("prefers the SDK's `tenant` key, then the current organization object", async () => {
+    store.tenant = "globex";
+    store.current_tenant = JSON.stringify({ key: "acme" });
+    const { readStoredTenantKey } = await loadTenant();
+    expect(readStoredTenantKey()).toBe("globex");
+    delete store.tenant;
+    expect(readStoredTenantKey()).toBe("acme");
+  });
+
+  it("is empty with no browser", async () => {
+    vi.unstubAllGlobals();
+    const { readStoredTenantKey } = await loadTenant();
+    expect(readStoredTenantKey()).toBe("");
   });
 });
 

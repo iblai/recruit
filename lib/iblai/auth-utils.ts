@@ -11,7 +11,6 @@ import {
 } from "@iblai/iblai-js/web-utils";
 
 import config from "./config";
-import { resolveDefaultTenant } from "./tenant";
 
 export const LOCAL_STORAGE_KEYS = {
   CURRENT_TENANT: "current_tenant",
@@ -77,7 +76,7 @@ export async function redirectToAuthSpa(
 ) {
   return sdkRedirectToAuthSpa({
     redirectTo,
-    platformKey: platformKey || resolveDefaultTenant(),
+    platformKey,
     logout,
     saveRedirect,
     forceRedirect: explicitUserAction,

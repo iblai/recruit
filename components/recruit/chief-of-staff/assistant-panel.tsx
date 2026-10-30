@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ChiefOfStaffChat } from "@/components/recruit/chief-of-staff/chat";
 import { ChiefOfStaffSetupCard } from "@/components/recruit/chief-of-staff/setup-card";
 import { useSession } from "@/hooks/use-session";
+import { useSampleMode } from "@/hooks/use-sample-mode";
 import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
 import { VOCAB } from "@/lib/recruit/vocabulary";
 import { cn } from "@/lib/utils";
@@ -77,7 +78,9 @@ export function AssistantPanelProvider({ children }: { children: ReactNode }) {
 /** The panel itself — mount once, to the right of the page content. */
 export function AssistantPanel() {
   const { open, setOpen, onHome } = useAssistantPanel();
-  const { agentId, isLoading } = useRecruitSettings();
+  const { agentId: orgAgentId, isLoading } = useRecruitSettings();
+  // The sample has no Chief of Staff of its own.
+  const agentId = useSampleMode() ? "" : orgAgentId;
   const [nonce, setNonce] = useState(0);
   if (onHome || !open) return null;
 

@@ -14,6 +14,7 @@ import { useAdminMode } from "@/components/crm/admin-mode";
 import { useSession } from "@/hooks/use-session";
 import { redirectToAuthSpa } from "@/lib/iblai/auth-utils";
 import config from "@/lib/iblai/config";
+import { useAgentPermissions } from "@/lib/recruit/use-agent-permissions";
 
 /**
  * The conversation with the Chief of Staff — the SDK's in-process `Chat`
@@ -39,6 +40,7 @@ function ChatInner({ agentId }: { agentId: string }) {
   const searchParams = useSearchParams();
   const { tenantKey, href } = useSession();
   const { adminMode } = useAdminMode();
+  useAgentPermissions(agentId, tenantKey);
 
   const restoreSessionId = searchParams.get("session") ?? undefined;
   const newParam = searchParams.get("new") ?? undefined;

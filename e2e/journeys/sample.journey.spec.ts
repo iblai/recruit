@@ -47,7 +47,7 @@ test.describe("sample journey", () => {
     await onMain(page, "/dashboard");
     await expect(page.getByTestId("sample-notice")).toContainText("sample data");
     await expect(
-      page.getByTestId("sample-notice").getByRole("button", { name: "Create your organization" }),
+      page.getByTestId("sample-notice").getByRole("button", { name: "Create Your Platform" }),
     ).toBeVisible();
     await expect(page.locator("#main-content")).toContainText("Admitted", { timeout: 30_000 });
   });
@@ -115,7 +115,7 @@ test.describe("sample journey", () => {
     await onMain(page, "/dashboard");
     await page
       .getByTestId("sample-notice")
-      .getByRole("button", { name: "Create your organization" })
+      .getByRole("button", { name: "Create Your Platform" })
       .click();
     await page.getByRole("dialog").getByRole("button", { name: "Upgrade for free" }).click();
     await expect

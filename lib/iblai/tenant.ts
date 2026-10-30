@@ -108,6 +108,13 @@ export function readCurrentTenantKey(): string {
   return store.getItem("tenant") ?? "";
 }
 
+/** The org the SDK remembers (`tenant`, then `current_tenant`), "" when none. */
+export function readStoredTenantKey(): string {
+  const store = ls();
+  if (!store) return "";
+  return store.getItem("tenant") || readCurrentTenantKey();
+}
+
 /** The `tenants` entry for an org, if the user belongs to it. */
 export function findTenant(tenantKey: string): TenantEntry | undefined {
   return readTenants().find((t) => t.key === tenantKey);
@@ -124,19 +131,18 @@ export function isTenantMember(tenantKey: string): boolean {
 }
 
 /**
- * Where to land when the URL names no organization: the session's org, then
- * the SDK's last org, then the first non-community org the user belongs to,
- * then the community org (`NEXT_PUBLIC_MAIN_TENANT_KEY`, default `main`).
+ * Where to land when the URL names no organization: the remembered org unless
+ * it is the community one, else the first org the user belongs to that is not
+ * the community one, else the community one itself (the trial-gated shell);
+ * null only when signed out.
  */
-export function resolveDefaultTenant(): string {
-  const current = readCurrentTenantKey();
-  if (current) return current;
-  const tenants = readTenants();
-  const main = config.mainTenantKey();
-  const firstOwn = tenants.find((t) => t.key && t.key !== main);
-  if (firstOwn) return firstOwn.key;
-  if (tenants[0]?.key) return tenants[0].key;
-  return main;
+export function pickLandingTenant(
+  stored: string,
+  tenants: ReadonlyArray<Pick<TenantEntry, "key">>,
+  main: string = config.mainTenantKey(),
+): string | null {
+  if (stored && stored !== main) return stored;
+  return tenants.find((t) => t.key && t.key !== main)?.key ?? (tenants.length ? main : null);
 }
 
 /** Path of a page inside an organization: `/platform/<org>/<path>`. */

@@ -188,19 +188,19 @@ describe("getEnv", () => {
 });
 
 describe("recruit additions", () => {
-  it("exposes the public app url and the agent pin (empty by default)", async () => {
+  it("exposes the public origin and the agent pin (empty by default)", async () => {
     const config = await loadConfig();
-    expect(config.appUrl()).toBe("");
+    expect(config.publicOrigin()).toBe("");
     expect(config.defaultAgentId()).toBe("");
   });
   it("strips trailing slashes from NEXT_PUBLIC_APP_URL", async () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://recruit.example.edu///";
     const config = await loadConfig();
-    expect(config.appUrl()).toBe("https://recruit.example.edu");
+    expect(config.publicOrigin()).toBe("https://recruit.example.edu");
   });
   it("returns a checkout to the hosted app unless NEXT_PUBLIC_APP_URL names another", async () => {
-    expect((await loadConfig()).checkoutReturnUrl()).toBe("https://recruit.iblai.me");
+    expect((await loadConfig()).appUrl()).toBe("https://recruit.iblai.me");
     process.env.NEXT_PUBLIC_APP_URL = "https://recruit.example.edu/";
-    expect((await loadConfig()).checkoutReturnUrl()).toBe("https://recruit.example.edu");
+    expect((await loadConfig()).appUrl()).toBe("https://recruit.example.edu");
   });
 });

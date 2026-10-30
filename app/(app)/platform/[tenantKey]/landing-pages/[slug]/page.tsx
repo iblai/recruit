@@ -84,7 +84,7 @@ export default function LandingPageEditorPage() {
   // Everything a published page needs, as hints; only what the platform would refuse blocks Save.
   const issues = draft ? validateLandingPage(draft, { publish: true }) : [];
   const blocking = draft ? validateLandingPage(draft, { publish: draft.published }) : [];
-  const url = landingPageUrl(config.appUrl(), tenantKey, slug);
+  const url = landingPageUrl(config.publicOrigin(), tenantKey, slug);
   const pipeline =
     (draft?.pipelineCode && lookups.pipelines.find((p) => p.code === draft.pipelineCode)) ||
     lookups.defaultPipeline;

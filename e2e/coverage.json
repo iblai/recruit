@@ -108,6 +108,102 @@
       "journey": "sample",
       "name": "the upgrade dialog's Upgrade for free opens recruit's $0 checkout",
       "spec": "journeys/sample.journey.spec.ts"
+    },
+    {
+      "id": "H1",
+      "journey": "house",
+      "name": "lands on the community platform inside the shell, with the admin cluster shown",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H2",
+      "journey": "house",
+      "name": "a trial-gated click opens the SDK upgrade dialog, and Escape closes it",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H3",
+      "journey": "house",
+      "name": "the platform is previewed, and Join goes to the auth page's join for it",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H4",
+      "journey": "house",
+      "name": "Create Your Own Platform is ibl.ai's $0 sign-up with this app nested in the return address",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H5",
+      "journey": "house",
+      "name": "a readably keyed platform is not asked its name: the first run is sector, team, done, and the home holds afterwards",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H6",
+      "journey": "house",
+      "name": "an admin who finished it stays home",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H7",
+      "journey": "house",
+      "name": "a member is sent to the platform's form, answers it, sees the final step and lands home",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H8",
+      "journey": "house",
+      "name": "with nothing configured, /onboarding says so and Continue goes home",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H9",
+      "journey": "house",
+      "name": "Back to My Platform leaves the preview for the user's own platform home",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H10",
+      "journey": "house",
+      "name": "Management › Onboarding opens for the admin, its agent links based on this app's onboarding route",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H11",
+      "journey": "house",
+      "name": "a named platform whose sector is set gets only the team step and the finish",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H12",
+      "journey": "house",
+      "name": "the community platform shows the sample: the admin rows, a filled Prospects list and the notice",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H13",
+      "journey": "house",
+      "name": "a write on the sample opens the upgrade dialog",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H14",
+      "journey": "house",
+      "name": "the upgrade dialog's Upgrade for free opens this app's $0 checkout",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H15",
+      "journey": "house",
+      "name": "still on the community platform while the platform lists their own, the SDK moves them to it",
+      "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "H16",
+      "journey": "house",
+      "name": "Upgrade Plan asks for a pricing page that returns through the sign-in app",
+      "spec": "journeys/house.journey.spec.ts"
     }
   ]
 }

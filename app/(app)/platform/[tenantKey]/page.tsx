@@ -17,6 +17,7 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { TodayBrief } from "@/components/recruit/chief-of-staff/brief";
 import { ChiefOfStaffChat } from "@/components/recruit/chief-of-staff/chat";
 import { ChiefOfStaffSetupCard } from "@/components/recruit/chief-of-staff/setup-card";
+import { useSampleMode } from "@/hooks/use-sample-mode";
 import { useSession } from "@/hooks/use-session";
 import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
 import { VOCAB } from "@/lib/recruit/vocabulary";
@@ -28,12 +29,15 @@ const BRIEF_KEY = "recruit.home.brief";
  * Home is a conversation with the Chief of Staff — the agent every member of
  * the recruitment team works through — with today's numbers beside it. The
  * agent is the one an admin set up for this organization (or the one pinned
- * by NEXT_PUBLIC_DEFAULT_AGENT_ID); without one, the setup card takes its place.
+ * by NEXT_PUBLIC_DEFAULT_AGENT_ID); without one, and on the community
+ * organization's sample, the setup card takes its place.
  */
 export default function HomePage() {
   const router = useRouter();
   const { href, displayName } = useSession();
-  const { agentId, isLoading } = useRecruitSettings();
+  const { agentId: orgAgentId, isLoading } = useRecruitSettings();
+  // The sample has no Chief of Staff of its own.
+  const agentId = useSampleMode() ? "" : orgAgentId;
   const [showBrief, setShowBrief] = useState(true);
 
   useEffect(() => {

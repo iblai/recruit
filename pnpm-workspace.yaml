@@ -1,4 +1,6 @@
 allowBuilds:
+  "@parcel/watcher": false
+  "@swc/core": false
   canvas: false
   core-js: false
   esbuild: false

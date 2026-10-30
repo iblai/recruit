@@ -12,12 +12,21 @@
  *   they differ it re-authenticates against the requested org and hands back a
  *   fresh org-scoped token pair, which we persist (saveUserTokens) — without
  *   that the provider loops on "User still does not belong to tenant".
+ *
+ * The requested organization is the route's when the user belongs to it, else
+ * the one they own (a route organization they lack is previewed by the
+ * platform layout, never joined from a link); with neither the SDK signs in
+ * without `tenant=` and the Auth SPA picks the user's own.
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Provider as ReduxProvider, useDispatch } from "react-redux";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { initializeDataLayer, type TokenResponse } from "@iblai/iblai-js/data-layer";
+import {
+  initializeDataLayer,
+  useLazyGetUserTenantsQuery,
+  type TokenResponse,
+} from "@iblai/iblai-js/data-layer";
 import {
   AuthProvider,
   ServiceWorkerProvider,
@@ -36,7 +45,8 @@ import { LoadingScreen } from "@/components/loading-screen";
 import { iblaiStore } from "@/store/iblai-store";
 import { LocalStorageService } from "@/lib/iblai/storage-service";
 import config from "@/lib/iblai/config";
-import { readCurrentTenantKey, readUsername, resolveDefaultTenant } from "@/lib/iblai/tenant";
+import { readStoredTenantKey, readUsername } from "@/lib/iblai/tenant";
+import { decideEntry, readTenants, type OrgEntry } from "@/lib/iblai/house-journeys";
 import { redirectToAuthSpa, handleTenantSwitch, LOCAL_STORAGE_KEYS } from "@/lib/iblai/auth-utils";
 
 // The SDK logs the session tokens with console.log; production keeps warnings and errors only.
@@ -90,10 +100,27 @@ function Providers({ children }: { children: ReactNode }) {
   useTenantSwitchSync();
 
   const username = useMemo(() => (mounted ? readUsername() : ""), [mounted]);
-  const storedTenant = useMemo(
-    () => (mounted ? readCurrentTenantKey() || resolveDefaultTenant() : ""),
-    [mounted],
-  );
+  const storedTenant = useMemo(() => (mounted ? readStoredTenantKey() : ""), [mounted]);
+
+  // The membership list, before the SDK can attempt a join from a link: what
+  // the sign-in stored, else one fetch (/iblai-vibe-house-journeys).
+  const storedTenants = useMemo(() => (mounted ? readTenants() : []), [mounted]);
+  // A fresh profile has no session to ask with: the AuthProvider signs it in.
+  const needFetch = mounted && !!routeTenant && !!username && storedTenants.length === 0;
+  const [fetchUserTenants] = useLazyGetUserTenantsQuery();
+  const [fetched, setFetched] = useState<OrgEntry[] | null>(null);
+  useEffect(() => {
+    if (!needFetch || fetched) return;
+    fetchUserTenants()
+      .unwrap()
+      .then((list) => {
+        const known: OrgEntry[] = Array.isArray(list) ? list.map((t) => ({ ...t })) : [];
+        localStorage.setItem(LOCAL_STORAGE_KEYS.TENANTS, JSON.stringify(known));
+        setFetched(known);
+      })
+      .catch(() => setFetched([]));
+  }, [needFetch, fetched, fetchUserTenants]);
+  const tenants = needFetch ? fetched : storedTenants;
 
   const isPublicRoute =
     pathname.startsWith("/sso-login") ||
@@ -113,9 +140,12 @@ function Providers({ children }: { children: ReactNode }) {
     !/^(localhost|127\.0\.0\.1|\[::1\])$|\.iblai\.me$/.test(window.location.hostname);
 
   const LOADING = <LoadingScreen />;
-  if (!isInitialized || !mounted) return LOADING;
+  if (!isInitialized || !mounted || tenants === null) return LOADING;
 
-  const requestedTenant = routeTenant || storedTenant;
+  // A route organization the user does not belong to is previewed by the
+  // platform layout; the app runs on their own underneath, so the SDK never
+  // attempts a join from a link (/iblai-vibe-house-journeys).
+  const requestedTenant = decideEntry({ routeOrg: routeTenant, stored: storedTenant, tenants }).org;
 
   return (
     <>

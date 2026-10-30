@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useDispatch } from "react-redux";
+import { useTranslations } from "next-intl";
 import { AlertTriangle, CheckCircle2, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
+import { setOpenPricingModal } from "@iblai/iblai-js/web-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { useSampleMode } from "@/hooks/use-sample-mode";
 import { useSession } from "@/hooks/use-session";
 import { adminFetch } from "@/lib/recruit/admin-client";
 import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
@@ -26,10 +30,13 @@ type Status = {
  * Shown where the Chief of Staff would be when the organization has no agent
  * yet. Admins run the one-click setup from here (the server creates the
  * agent, registers this app's tool server and saves the id); members are
- * told to ask an admin.
+ * told to ask an admin; on the sample it offers a platform of one's own.
  */
 export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }) {
   const { isAdmin, tenantKey, href } = useSession();
+  const sample = useSampleMode();
+  const t = useTranslations("houseJourneys.sample");
+  const dispatch = useDispatch();
   const { branding, refetch } = useRecruitSettings();
   const [status, setStatus] = useState<Status | null>(null);
   const [statusError, setStatusError] = useState("");
@@ -38,14 +45,14 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
   const [log, setLog] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!isAdmin || !tenantKey) return;
+    if (!isAdmin || !tenantKey || sample) return;
     adminFetch<Status>(`/api/admin/agent?org=${encodeURIComponent(tenantKey)}`)
       .then((s) => {
         setStatus(s);
         setInstitution((v) => v || (branding.name !== tenantKey ? branding.name : ""));
       })
       .catch((e: Error) => setStatusError(e.message));
-  }, [isAdmin, tenantKey, branding.name]);
+  }, [isAdmin, tenantKey, sample, branding.name]);
 
   const run = async () => {
     setBusy(true);
@@ -85,7 +92,16 @@ export function ChiefOfStaffSetupCard({ compact = false }: { compact?: boolean }
           </p>
         </div>
 
-        {!isAdmin ? (
+        {sample ? (
+          <div className="px-6 py-5">
+            <Button
+              className="ibl-button-primary"
+              onClick={() => dispatch(setOpenPricingModal(true))}
+            >
+              {t("create")}
+            </Button>
+          </div>
+        ) : !isAdmin ? (
           <p className="text-muted-foreground px-6 py-5 text-sm">
             An organization admin has not set up the {VOCAB.chiefOfStaff} yet. Ask them to open{" "}
             <span className="font-medium text-gray-900">Settings → {VOCAB.chiefOfStaff}</span>.

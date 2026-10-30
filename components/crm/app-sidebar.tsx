@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   CalendarCheck2,
   ChartColumn,
@@ -30,11 +30,13 @@ import {
   type PlatformSidebarSectionConfig,
   type PlatformSidebarSectionContext,
 } from "@iblai/iblai-js/web-containers/next";
-import { selectRbacPermissions, type Tenant } from "@iblai/iblai-js/web-utils";
+import { selectRbacPermissions, setOpenPricingModal, type Tenant } from "@iblai/iblai-js/web-utils";
 import { useAdminMode } from "@/components/crm/admin-mode";
 import { useCommandPalette } from "@/components/crm/command-palette";
+import { useSampleMode } from "@/hooks/use-sample-mode";
 import { useSession } from "@/hooks/use-session";
 import config from "@/lib/iblai/config";
+import { isTrialUser } from "@/lib/iblai/house-journeys";
 import { tenantDisplayName } from "@/lib/iblai/tenant";
 import type { IblaiRootState } from "@/store/iblai-store";
 import { cn } from "@/lib/utils";
@@ -71,8 +73,12 @@ const WORKSPACE: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
-  const { href, tenantKey, username, email, isAdmin, currentTenant } = useSession();
+  const { href, tenantKey, username, email, isAdmin, currentTenant, tenants } = useSession();
   const { adminMode } = useAdminMode();
+  const dispatch = useDispatch();
+  // On the community organization the admin cluster is shown and every click upgrades.
+  const trial = isTrialUser(tenantKey, tenants);
+  const sample = useSampleMode();
   const { open: openPalette } = useCommandPalette();
   const rbacPermissions = useSelector((s: IblaiRootState) => selectRbacPermissions(s));
   const [sheet, setSheet] = useState<PlatformAccountTab | null>(null);
@@ -80,11 +86,12 @@ export function AppSidebar() {
 
   const onFooterAction = useCallback(
     (id: PlatformSidebarFooterActionId) => {
-      if (id === "notifications") router.push(href("/notifications"));
+      if (trial) dispatch(setOpenPricingModal(true));
+      else if (id === "notifications") router.push(href("/notifications"));
       else if (id === "invites") setInviteOpen(true);
       else setSheet(id);
     },
-    [router, href],
+    [trial, dispatch, router, href],
   );
 
   const sections = useMemo<PlatformSidebarSectionConfig[]>(
@@ -119,12 +126,17 @@ export function AppSidebar() {
         primaryAction={{
           label: "New conversation",
           icon: Sparkles,
-          onClick: () => router.push(`${href()}?new=${Date.now().toString(36)}`),
+          // The sample has no Chief of Staff of its own: a new conversation upgrades.
+          onClick: () =>
+            sample
+              ? dispatch(setOpenPricingModal(true))
+              : router.push(`${href()}?new=${Date.now().toString(36)}`),
         }}
         sections={sections}
         footer={{
           isAdmin,
           isLiveAdmin: isAdmin && adminMode,
+          showTrialGatedAdminMenu: trial,
           enableRbac: config.enableRBAC(),
           rbacPermissions: rbacPermissions ?? {},
           tenantKey,
@@ -146,6 +158,7 @@ export function AppSidebar() {
         authUrl={config.authUrl()}
         currentSpa="recruit"
         platformBaseDomain={config.platformBaseDomain()}
+        onboardingBasePath={`${window.location.origin}${href()}`}
         rbacPermissions={rbacPermissions ?? {}}
       />
       <InviteUserDialog

@@ -238,15 +238,16 @@ describe("sampleSession and sampleVisitor", () => {
   };
   afterEach(() => vi.unstubAllGlobals());
 
-  it("browses the sample on the community organization unless the user administers it", () => {
+  it("browses the sample on the community organization, for everyone", () => {
     store({
       tenants: JSON.stringify([{ key: "main", is_admin: false }]),
       current_tenant: JSON.stringify({ key: "main" }),
     });
     expect(sampleSession("/platform/main/prospects")).toBe(true);
     expect(sampleSession("/platform/acme/prospects")).toBe(false);
+    expect(sampleSession("/")).toBe(true);
     store({ tenants: JSON.stringify([{ key: "main", is_admin: true }]) });
-    expect(sampleSession("/platform/main")).toBe(false);
+    expect(sampleSession("/platform/main")).toBe(true);
   });
 
   it("names the visitor from the session, with stand-ins when it says nothing", () => {
