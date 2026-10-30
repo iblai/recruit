@@ -979,6 +979,11 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
         counselor_id: { type: "integer" },
         funnel_code: { type: "string" },
         stage_code: { type: "string" },
+        source_code: {
+          type: "string",
+          description:
+            'Code of an existing Source, e.g. web. Omitted: "web" when the organization has it, else none.',
+        },
         cta_label: { type: "string" },
         publish: { type: "boolean" },
       },
@@ -987,6 +992,14 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
     },
     annotations: { title: "Create landing page" },
     handler: async (args, ctx) => {
+      // The CRM User key cannot mint a Source, so a page routes to an existing one or none.
+      const sources = await ctx.crm.listLeadSources();
+      const requested = str(args.source_code);
+      if (requested && !sources.some((s) => s.code === requested))
+        return errorResult(
+          `Source "${requested}" doesn't exist. Sources: ${sources.map((s) => s.code).join(", ") || "none"}.`,
+        );
+      const sourceCode = requested || (sources.some((s) => s.code === "web") ? "web" : "");
       const page = newLandingPage({
         title: str(args.title),
         slug: str(args.slug) || undefined,
@@ -999,6 +1012,7 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
         ownerId: num(args.counselor_id) ?? null,
         pipelineCode: str(args.funnel_code) || undefined,
         stageCode: str(args.stage_code) || undefined,
+        sourceCode,
         ctaLabel: str(args.cta_label) || undefined,
         published: args.publish === true,
       });
@@ -1014,6 +1028,7 @@ export const RECRUIT_TOOLS: ToolDefinition<ToolContext>[] = [
         created: true,
         slug: page.slug,
         published: page.published,
+        source: page.sourceCode || null,
         url: landingPageUrl(ctx.appUrl, ctx.org, page.slug),
         edit_in_app: `${ctx.appUrl}/platform/${encodeURIComponent(ctx.org)}/landing-pages/${encodeURIComponent(page.slug)}`,
       };

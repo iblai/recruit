@@ -311,6 +311,7 @@ describe("recruitment tools", () => {
   it("create_landing_page drafts one web form", async () => {
     const forms: WebFormInput[] = [];
     const crm = {
+      listLeadSources: async () => [],
       listWebForms: async () => forms,
       createWebForm: async (body: WebFormInput) => {
         forms.push(body);
@@ -325,9 +326,11 @@ describe("recruitment tools", () => {
     const out = (await tool("create_landing_page").handler(
       { title: "Fall Open House", term: "Fall 2027", funnel_code: "admissions" },
       ctx,
-    )) as { url: string; published: boolean };
+    )) as { url: string; published: boolean; source: string | null };
     expect(out.url).toBe("https://recruit.example.edu/p/northfield/fall-open-house");
     expect(out.published).toBe(false);
+    expect(out.source).toBeNull();
+    expect(forms[0]).toMatchObject({ routing: { lead_source_code: "" } });
     expect(forms).toHaveLength(1);
     expect(forms[0]).toMatchObject({
       slug: "fall-open-house",
@@ -345,6 +348,39 @@ describe("recruitment tools", () => {
     const dupe = await tool("create_landing_page").handler({ title: "Fall Open House" }, ctx);
     expect((dupe as { isError: boolean }).isError).toBe(true);
     expect(forms).toHaveLength(1);
+  });
+
+  it("create_landing_page defaults to the web source and refuses an unknown one", async () => {
+    const forms: WebFormInput[] = [];
+    const crm = {
+      listLeadSources: async () => [
+        { id: 9, code: "web", name: "Website" },
+        { id: 3, code: "college_fair", name: "College fair" },
+      ],
+      listWebForms: async () => forms,
+      createWebForm: async (body: WebFormInput) => {
+        forms.push(body);
+        return body;
+      },
+    };
+    const ctx = { org: "northfield", crm, appUrl: "https://x" } as unknown as ToolContext;
+    const unknown = await tool("create_landing_page").handler(
+      { title: "Radio Night", source_code: "radio" },
+      ctx,
+    );
+    expect((unknown as { isError: boolean }).isError).toBe(true);
+    expect(JSON.stringify(unknown)).toContain("college_fair");
+    expect(forms).toHaveLength(0);
+    const picked = (await tool("create_landing_page").handler({ title: "Open House" }, ctx)) as {
+      source: string | null;
+    };
+    expect(picked.source).toBe("web");
+    expect(forms[0]).toMatchObject({ routing: { lead_source_code: "web" } });
+    await tool("create_landing_page").handler(
+      { title: "College Fair Night", source_code: "college_fair" },
+      ctx,
+    );
+    expect(forms[1]).toMatchObject({ routing: { lead_source_code: "college_fair" } });
   });
 
   it("create_application takes an existing source and never creates one", async () => {

@@ -112,15 +112,15 @@ wins over the org's metadata.
 
 ## Troubleshooting
 
-| Symptom                                      | Likely cause                                                                                                                    |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Home shows the setup card for everyone       | No `apps.recruit.agentId` in the org's metadata — run setup as an admin                                                         |
-| "Set up" button disabled                     | You are not an admin of this organization, or the status could not load                                                         |
-| Agent answers but never uses tools           | `mcp-tool` missing from `tool_slugs` or the server id missing from `mcp_servers` — re-run setup                                 |
-| Chat shows a warning about tools             | The platform cannot reach `<appUrl>/api/mcp/<org>` (not https, firewall) — check `NEXT_PUBLIC_APP_URL` and re-run setup         |
-| `401` from `/api/mcp/<org>` in your logs     | The call carried no bearer — the connection holds no key; re-run setup                                                          |
-| Tools answer "Platform request failed (401)" | The key was deleted, its admin left the organization, or this deployment still holds the old `RECRUIT_MCP_TOKEN` — re-run setup |
-| Tools answer "Platform request failed (403)" | The admin who ran setup lost admin rights, or the platform's CRM User policy lost a permission — another admin re-runs setup    |
+| Symptom                                      | Likely cause                                                                                                                                                                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Home shows the setup card for everyone       | No `apps.recruit.agentId` in the org's metadata — run setup as an admin                                                                                                                                             |
+| "Set up" button disabled                     | You are not an admin of this organization, or the status could not load                                                                                                                                             |
+| Agent answers but never uses tools           | `mcp-tool` missing from `tool_slugs` or the server id missing from `mcp_servers` — re-run setup                                                                                                                     |
+| Chat shows a warning about tools             | The platform cannot reach `<appUrl>/api/mcp/<org>` (not https, firewall) — check `NEXT_PUBLIC_APP_URL` and re-run setup                                                                                             |
+| `401` from `/api/mcp/<org>` in your logs     | The call carried no bearer — the connection holds no key; re-run setup                                                                                                                                              |
+| Tools answer "Platform request failed (401)" | The key was deleted, its admin left the organization, or this deployment still holds the old `RECRUIT_MCP_TOKEN` — re-run setup                                                                                     |
+| Tools answer "Platform request failed (403)" | The admin who ran setup lost admin rights, or the platform's CRM User policy lost a permission — another admin re-runs setup. Creating a Source needs an admin; the tool routes landing pages to existing ones only |
 
 Smoke-test the endpoint without the platform (`$TOKEN` is any Platform API
 Token of that organization; a `tools/call` acts with what the key may do):
