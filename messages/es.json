@@ -1,0 +1,25 @@
+{
+  "houseJourneys": {
+    "preview": {
+      "body": "Todavía no eres miembro de {name}. Únete, o crea una plataforma propia.",
+      "join": "Unirse a {name}",
+      "create": "Crear tu propia plataforma",
+      "back": "Volver a mi plataforma"
+    },
+    "onboarding": {
+      "meetTitle": "Conoce a {name}",
+      "meetBody": "El agente de tu plataforma está listo cuando tú lo estés.",
+      "allSetTitle": "Todo listo",
+      "allSetBody": "{workspace} está lista. Adelante.",
+      "allSetMember": "Gracias: tu plataforma ya tiene lo que necesita. Adelante.",
+      "workspace": "Tu plataforma",
+      "continue": "Continuar",
+      "complete": "Completar",
+      "back": "Atrás"
+    },
+    "sample": {
+      "body": "Estás viendo datos de muestra: prospectos, escuelas y solicitudes ficticios. Tu propia plataforma empieza vacía y es tuya para dirigirla.",
+      "create": "Crear tu plataforma"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "houseJourneys": {
+    "preview": {
+      "body": "你还不是 {name} 的成员。加入它，或创建你自己的平台。",
+      "join": "加入 {name}",
+      "create": "创建你自己的平台",
+      "back": "返回我的平台"
+    },
+    "onboarding": {
+      "meetTitle": "认识 {name}",
+      "meetBody": "你的平台的智能体随时为你服务。",
+      "allSetTitle": "一切就绪",
+      "allSetBody": "{workspace} 已准备好。进入吧。",
+      "allSetMember": "谢谢，你的平台已获得所需信息。进入吧。",
+      "workspace": "你的平台",
+      "continue": "继续",
+      "complete": "完成",
+      "back": "返回"
+    },
+    "sample": {
+      "body": "您正在查看示例数据：虚构的潜在学生、学校和申请。您自己的平台从空白开始，由您管理。",
+      "create": "创建您的平台"
+    }
+  }
+}
