@@ -58,7 +58,7 @@ The procedure is idempotent (`setupChiefOfStaff`):
    the server's platform-scoped connection (`credentials: <key>`,
    `authorization_scheme: Bearer`), creating the connection if needed. It is
    never logged and the app keeps no copy; re-runs rotate it.
-6. **Merge** `mcp-tool` into the agent's `tool_slugs` and the server id into
+6. **Merge** `mcp` into the agent's `tool_slugs` and the server id into
    `mcp_servers` (those lists are replaced on write — never send them blindly).
 7. Add the suggested prompts that are missing.
 8. Save `agentId`, `mcpServerId`, `toolsAccess` (`crm-user` or `owner`),
@@ -116,7 +116,7 @@ wins over the org's metadata.
 | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Home shows the setup card for everyone       | No `apps.recruit.agentId` in the org's metadata — run setup as an admin                                                                                                                                             |
 | "Set up" button disabled                     | You are not an admin of this organization, or the status could not load                                                                                                                                             |
-| Agent answers but never uses tools           | `mcp-tool` missing from `tool_slugs` or the server id missing from `mcp_servers` — re-run setup                                                                                                                     |
+| Agent answers but never uses tools           | `mcp` missing from `tool_slugs` or the server id missing from `mcp_servers` — re-run setup                                                                                                                          |
 | Chat shows a warning about tools             | The platform cannot reach `<appUrl>/api/mcp/<org>` (not https, firewall) — check `NEXT_PUBLIC_APP_URL` and re-run setup                                                                                             |
 | `401` from `/api/mcp/<org>` in your logs     | The call carried no bearer — the connection holds no key; re-run setup                                                                                                                                              |
 | Tools answer "Platform request failed (401)" | The key was deleted, its admin left the organization, or this deployment still holds the old `RECRUIT_MCP_TOKEN` — re-run setup                                                                                     |

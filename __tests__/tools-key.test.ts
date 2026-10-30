@@ -132,3 +132,18 @@ describe("setupChiefOfStaff — the tools' key", () => {
     expect(calls.some((c) => c.path.includes("/api-tokens/"))).toBe(false);
   });
 });
+
+describe("setupChiefOfStaff — the agent's MCP tool", () => {
+  it("wires the platform's MCP tool, `mcp`, onto the agent with the server", async () => {
+    const calls = fakePlatform();
+    await setup();
+
+    const wiring = calls.find(
+      (c) =>
+        c.method === "PUT" &&
+        c.path.endsWith("/mentors/agent-1/settings/") &&
+        (c.body as { tool_slugs?: unknown }).tool_slugs !== undefined,
+    );
+    expect(wiring?.body).toEqual({ tool_slugs: ["mcp"], mcp_servers: [7], can_use_tools: true });
+  });
+});

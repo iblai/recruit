@@ -313,7 +313,8 @@ export async function setupChiefOfStaff(input: SetupInput): Promise<SetupResult>
       `${mentorBase}/mentors/${enc(agentId)}/settings/`,
     );
     const toolSlugs = new Set<string>(Array.isArray(current.tool_slugs) ? current.tool_slugs : []);
-    toolSlugs.add("mcp-tool");
+    // The platform catalogue's MCP tool; any other slug is refused with a 400.
+    toolSlugs.add("mcp");
     const mcpIds = new Set<number>(
       (Array.isArray(current.mcp_servers) ? current.mcp_servers : [])
         .map((s) => (typeof s === "object" ? s.id : s))

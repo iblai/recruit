@@ -59,7 +59,7 @@ Every member of the recruitment team — counselors, recruiters, operations, the
 
 **Where it lives:** Home (`/platform/<org>`) is the full conversation with today's brief beside it; a **Chief of Staff** button in the top bar opens the same agent in a side panel on every other page.
 
-**Setup:** an org admin opens _Settings → Chief of Staff_ and clicks once. Acting as that admin, the server creates the agent, registers this deployment's tool server (`/api/mcp/<org>`, MCP over Streamable HTTP), mints the `recruit-tools` Platform API Token (scoped to the CRM User role where the platform enforces RBAC) and stores it in a platform-scoped connection (the platform presents it on every tool call; this app keeps no copy), wires `mcp-tool` + the server onto the agent, adds suggested prompts, and records the agent id in the organization's metadata so every member's app finds it. Re-running re-syncs the prompt and wiring, rotates the key and keeps everything else. Details: [docs/chief-of-staff.md](docs/chief-of-staff.md).
+**Setup:** an org admin opens _Settings → Chief of Staff_ and clicks once. Acting as that admin, the server creates the agent, registers this deployment's tool server (`/api/mcp/<org>`, MCP over Streamable HTTP), mints the `recruit-tools` Platform API Token (scoped to the CRM User role where the platform enforces RBAC) and stores it in a platform-scoped connection (the platform presents it on every tool call; this app keeps no copy), wires the `mcp` tool + the server onto the agent, adds suggested prompts, and records the agent id in the organization's metadata so every member's app finds it. Re-running re-syncs the prompt and wiring, rotates the key and keeps everything else. Details: [docs/chief-of-staff.md](docs/chief-of-staff.md).
 
 ---
 
