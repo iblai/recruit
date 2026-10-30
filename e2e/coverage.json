@@ -20,6 +20,12 @@
       "spec": "journeys/auth.journey.spec.ts"
     },
     {
+      "id": "A4",
+      "journey": "auth",
+      "name": "back from the $0 checkout on the community organization's session, the SDK moves the user to their own",
+      "spec": "journeys/auth.journey.spec.ts"
+    },
+    {
       "id": "S1",
       "journey": "shell",
       "name": "sidebar reaches every workspace object",

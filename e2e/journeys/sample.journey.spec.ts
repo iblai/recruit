@@ -110,7 +110,7 @@ test.describe("sample journey", () => {
     let checkout = "";
     await page.route(/credits-free-plan/, (route) => {
       checkout = route.request().url();
-      return route.fulfill({ status: 204, body: "" });
+      return route.fulfill({ contentType: "text/html", body: "<title>checkout stub</title>" });
     });
     await onMain(page, "/dashboard");
     await page
