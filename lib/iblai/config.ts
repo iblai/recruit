@@ -112,6 +112,9 @@ const config = {
     if (explicit) return explicit;
     return typeof window !== "undefined" ? window.location.origin : "";
   },
+  /** Where ibl.ai's $0 checkout returns a new organization's admin: the hosted app unless set. */
+  checkoutReturnUrl: () =>
+    getEnv("NEXT_PUBLIC_APP_URL", "https://recruit.iblai.me").replace(/\/+$/, ""),
   supportEmail: () => getEnv("NEXT_PUBLIC_SUPPORT_EMAIL", "support@ibl.ai"),
   helpCenterUrl: () => getEnv("NEXT_PUBLIC_HELP_CENTER_URL", "https://ibl.ai/support"),
   documentationUrl: () =>

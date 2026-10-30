@@ -72,6 +72,36 @@
       "journey": "recruit",
       "name": "create and delete a tag",
       "spec": "journeys/recruit.journey.spec.ts"
+    },
+    {
+      "id": "D1",
+      "journey": "sample",
+      "name": "the community organization carries the sample notice and the sample's applications",
+      "spec": "journeys/sample.journey.spec.ts"
+    },
+    {
+      "id": "D2",
+      "journey": "sample",
+      "name": "the sample's prospects are listed and a prospect's page opens",
+      "spec": "journeys/sample.journey.spec.ts"
+    },
+    {
+      "id": "D3",
+      "journey": "sample",
+      "name": "schools, applications, activities and tags show the sample's rows",
+      "spec": "journeys/sample.journey.spec.ts"
+    },
+    {
+      "id": "D4",
+      "journey": "sample",
+      "name": "creating a prospect opens the upgrade dialog and reaches no platform",
+      "spec": "journeys/sample.journey.spec.ts"
+    },
+    {
+      "id": "D5",
+      "journey": "sample",
+      "name": "the upgrade dialog's Upgrade for free opens recruit's $0 checkout",
+      "spec": "journeys/sample.journey.spec.ts"
     }
   ]
 }

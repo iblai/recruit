@@ -198,4 +198,9 @@ describe("recruit additions", () => {
     const config = await loadConfig();
     expect(config.appUrl()).toBe("https://recruit.example.edu");
   });
+  it("returns a checkout to the hosted app unless NEXT_PUBLIC_APP_URL names another", async () => {
+    expect((await loadConfig()).checkoutReturnUrl()).toBe("https://recruit.iblai.me");
+    process.env.NEXT_PUBLIC_APP_URL = "https://recruit.example.edu/";
+    expect((await loadConfig()).checkoutReturnUrl()).toBe("https://recruit.example.edu");
+  });
 });

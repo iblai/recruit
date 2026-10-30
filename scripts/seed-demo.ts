@@ -21,155 +21,24 @@ import { CrmServer } from "../lib/recruit/crm-server";
 import { newLandingPage, landingPageUrl, toWebForm } from "../lib/recruit/landing-pages";
 import { applicationTitle } from "../lib/recruit/fields";
 import { readRecruitSettingsServer, writeRecruitSettings } from "../lib/recruit/settings-server";
+import {
+  DEMO_INSTITUTION,
+  DEMO_PROSPECTS as PROSPECTS,
+  DEMO_SCHOOLS as SCHOOLS,
+  DEMO_TAGS as TAGS,
+  DEMO_TERM,
+  demoLandingPage,
+  lifecycleFor,
+} from "../lib/recruit/demo-data";
 
 const { org } = bootstrap();
-const term = argValue("--term") ?? "Fall 2027";
+const term = argValue("--term") ?? DEMO_TERM;
 const appUrl = (
   argValue("--app-url") ??
   process.env.NEXT_PUBLIC_APP_URL ??
   "http://localhost:3000"
 ).replace(/\/+$/, "");
 const log = (s: string) => console.log(`  • ${s}`);
-
-const TAGS = [
-  ["Honors", "#7c3aed"],
-  ["First-gen", "#0891b2"],
-  ["Athlete", "#ea580c"],
-  ["Legacy", "#059669"],
-  ["Web inquiry", "#0058cc"],
-] as const;
-
-const SCHOOLS = [
-  { name: "Lincoln High School", city: "Austin", state: "TX", type: "high_school" },
-  { name: "Westbrook Community College", city: "Portland", state: "OR", type: "community_college" },
-  { name: "St. Catherine Academy", city: "Chicago", state: "IL", type: "high_school" },
-];
-
-const PROSPECTS = [
-  {
-    name: "Ada Lovelace",
-    email: "ada.lovelace@example.edu",
-    program: "B.S. Computer Science",
-    school: 0,
-    stage: "admitted",
-    tags: ["Honors"],
-    grad: "2027",
-    residency: "in_state",
-  },
-  {
-    name: "Marcus Chen",
-    email: "marcus.chen@example.edu",
-    program: "B.A. Economics",
-    school: 0,
-    stage: "applied",
-    tags: [],
-    grad: "2027",
-    residency: "in_state",
-  },
-  {
-    name: "Priya Natarajan",
-    email: "priya.n@example.edu",
-    program: "B.S. Nursing",
-    school: 2,
-    stage: "deposited",
-    tags: ["First-gen"],
-    grad: "2027",
-    residency: "out_of_state",
-  },
-  {
-    name: "Diego Alvarez",
-    email: "diego.alvarez@example.edu",
-    program: "B.S. Mechanical Engineering",
-    school: 1,
-    stage: "engaged",
-    tags: ["Athlete"],
-    grad: "2026",
-    residency: "out_of_state",
-    entry: "transfer",
-  },
-  {
-    name: "Hannah Okafor",
-    email: "hannah.okafor@example.edu",
-    program: "B.F.A. Design",
-    school: 2,
-    stage: "inquiry",
-    tags: ["Web inquiry"],
-    grad: "2028",
-    residency: "out_of_state",
-  },
-  {
-    name: "Liam O'Connor",
-    email: "liam.oconnor@example.edu",
-    program: "B.S. Biology",
-    school: 0,
-    stage: "applied",
-    tags: ["Legacy"],
-    grad: "2027",
-    residency: "in_state",
-  },
-  {
-    name: "Sofia Rossi",
-    email: "sofia.rossi@example.edu",
-    program: "B.A. International Relations",
-    school: 2,
-    stage: "admitted",
-    tags: ["Honors", "First-gen"],
-    grad: "2027",
-    residency: "international",
-  },
-  {
-    name: "Noah Williams",
-    email: "noah.williams@example.edu",
-    program: "B.S. Business",
-    school: 1,
-    stage: "enrolled",
-    tags: [],
-    grad: "2026",
-    residency: "in_state",
-    entry: "transfer",
-  },
-  {
-    name: "Mei Tanaka",
-    email: "mei.tanaka@example.edu",
-    program: "B.S. Data Science",
-    school: 0,
-    stage: "engaged",
-    tags: ["Honors"],
-    grad: "2027",
-    residency: "international",
-  },
-  {
-    name: "Jamal Robinson",
-    email: "jamal.robinson@example.edu",
-    program: "B.S. Kinesiology",
-    school: 2,
-    stage: "withdrawn",
-    tags: ["Athlete"],
-    grad: "2027",
-    residency: "out_of_state",
-  },
-  {
-    name: "Emma Johansson",
-    email: "emma.johansson@example.edu",
-    program: "B.A. Psychology",
-    school: 0,
-    stage: "inquiry",
-    tags: ["Web inquiry"],
-    grad: "2028",
-    residency: "in_state",
-  },
-  {
-    name: "Carlos Mendes",
-    email: "carlos.mendes@example.edu",
-    program: "B.S. Civil Engineering",
-    school: 1,
-    stage: "applied",
-    tags: ["First-gen"],
-    grad: "2026",
-    residency: "in_state",
-    entry: "transfer",
-  },
-];
 
 async function main() {
   const authorization = await askAuthorization();
@@ -222,16 +91,7 @@ async function main() {
   const now = Date.now();
   for (const [i, p] of PROSPECTS.entries()) {
     let person = await crm.findPersonByEmail(p.email);
-    const lifecycle =
-      p.stage === "enrolled"
-        ? "customer"
-        : p.stage === "withdrawn"
-          ? "churned"
-          : ["applied", "admitted", "deposited"].includes(p.stage)
-            ? "opportunity"
-            : p.stage === "engaged"
-              ? "qualified"
-              : "lead";
+    const lifecycle = lifecycleFor(p.stage);
     if (!person) {
       person = await crm.createPerson({
         name: p.name,
@@ -295,23 +155,13 @@ async function main() {
   // Landing page
   const forms = await crm.listWebForms();
   if (!forms.some((f) => f.slug === "request-information")) {
-    const page = newLandingPage({
-      title: "Request information",
-      slug: "request-information",
-      headline: "Find your place here.",
-      subheadline: `Tell us a little about yourself and an admissions counselor will reach out about ${term}.`,
-      pipelineCode: "admissions",
-      stageCode: "inquiry",
-      term,
-      tags: ["Web inquiry"],
-      published: true,
-    });
+    const page = newLandingPage(demoLandingPage(term));
     await crm.createWebForm(toWebForm(page));
     log(`Published landing page ${landingPageUrl(appUrl, org, page.slug)}`);
   } else log("Landing page exists");
   const settings = await readRecruitSettingsServer(org);
   if (!settings.institutionName)
-    await writeRecruitSettings(org, { institutionName: "Northfield University" }, authorization);
+    await writeRecruitSettings(org, { institutionName: DEMO_INSTITUTION }, authorization);
 
   console.log("\n✓ Done. Open the app and ask the Chief of Staff for today's brief.\n");
 }

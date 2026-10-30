@@ -15,6 +15,9 @@ import {
   AssistantPanelProvider,
 } from "@/components/recruit/chief-of-staff/assistant-panel";
 import { LoadingScreen } from "@/components/loading-screen";
+import { SampleNotice } from "@/components/crm/sample-notice";
+import { UpgradeModal } from "@/components/crm/upgrade-modal";
+import { useSampleMode } from "@/hooks/use-sample-mode";
 import { useSession } from "@/hooks/use-session";
 
 /**
@@ -26,6 +29,7 @@ import { useSession } from "@/hooks/use-session";
  */
 export default function TenantLayout({ children }: { children: ReactNode }) {
   const { isAdmin, tenantKey } = useSession();
+  const sample = useSampleMode();
   // Sidebar open/closed state persists in a cookie (written by the shadcn
   // sidebar); read it once on the client.
   const [defaultOpen] = useState<boolean>(() => {
@@ -38,6 +42,7 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
 
   return (
     <AdminModeProvider isAdmin={isAdmin} tenantKey={tenantKey}>
+      <UpgradeModal org={tenantKey} />
       <TooltipProvider>
         <CommandPaletteProvider>
           <BreadcrumbProvider>
@@ -46,6 +51,7 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
                 <AppSidebar />
                 <SidebarInset className="flex h-dvh min-w-0 flex-col overflow-hidden bg-[var(--sidebar-bg,#fafbfc)]">
                   <TopBar />
+                  {sample ? <SampleNotice /> : null}
                   <div className="flex min-h-0 flex-1">
                     <AdminGate>
                       <main

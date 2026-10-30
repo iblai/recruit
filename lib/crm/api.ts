@@ -8,8 +8,16 @@
  * slice's cache is reset by the org-scoped `tenantKey` we thread through
  * `providesTags`/`invalidatesTags` and by a full `resetApiState` on switch.
  */
-import { createApi, fetchBaseQuery, type FetchArgs } from "@reduxjs/toolkit/query/react";
+import {
+  createApi,
+  fetchBaseQuery,
+  type FetchArgs,
+  type FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
+import { setOpenPricingModal } from "@iblai/iblai-js/web-utils";
 import config from "@/lib/iblai/config";
+import { sampleSession, sampleVisitor } from "@/lib/recruit/sample/mode";
+import { NOT_FOUND, sampleResponse } from "@/lib/recruit/sample/respond";
 import { LOCAL_STORAGE_KEYS } from "@/lib/iblai/auth-utils";
 import { CRM_APP, SCOPE_MISSING, confirmScope, isOwnRecords, scopeConfirmed } from "./app";
 import type {
@@ -131,6 +139,18 @@ const scopedQuery: typeof rawBaseQuery = async (args, api, extra) => {
 
 /** Normalize errors to `{ status, detail }` so the UI can toast them. */
 const baseQuery: typeof rawBaseQuery = async (args, api, extra) => {
+  // The community organization runs on the sample: reads answer locally, a write upgrades.
+  if (typeof window !== "undefined" && sampleSession(window.location.pathname)) {
+    const request = typeof args === "string" ? { url: args } : args;
+    const data = sampleResponse(request.method ?? "GET", request.url, request.params, {
+      now: new Date(),
+      visitor: sampleVisitor(),
+    });
+    if (data !== undefined && data !== NOT_FOUND) return { data };
+    if (data === undefined) api.dispatch(setOpenPricingModal(true));
+    const error: CrmApiError = { status: data === NOT_FOUND ? 404 : "SAMPLE", detail: "" };
+    return { error: error as unknown as FetchBaseQueryError };
+  }
   const result = await scopedQuery(args, api, extra);
   if (result.error) {
     const data = result.error.data as unknown;
