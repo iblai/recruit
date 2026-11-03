@@ -1,4 +1,4 @@
-.PHONY: dev build start check test e2e e2e-ui tauri-dev tauri-build ios android
+.PHONY: dev build start check test e2e e2e-ui tauri-dev tauri-build ios android mobile-init
 
 dev: ; pnpm dev
 build: ; pnpm build
@@ -7,7 +7,8 @@ check: ; pnpm typecheck && pnpm lint && pnpm format:check && pnpm test
 test: ; pnpm test
 e2e: ; pnpm test:e2e
 e2e-ui: ; pnpm test:e2e:ui
-tauri-dev: ; pnpm tauri dev
-tauri-build: ; pnpm tauri build
-ios: ; pnpm tauri ios dev
-android: ; pnpm tauri android dev
+tauri-dev: ; pnpm tauri:dev
+tauri-build: ; pnpm tauri:build
+ios: ; pnpm tauri:dev:ios
+android: ; pnpm tauri:dev:android
+mobile-init: ; bash scripts/mobile-init.sh

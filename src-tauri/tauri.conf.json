@@ -4,14 +4,13 @@
   "identifier": "ai.ibl.recruit",
   "version": "0.1.0",
   "build": {
-    "beforeDevCommand": "",
-    "beforeBuildCommand": "",
-    "devUrl": "https://recruit.ibl.ai",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "pnpm dev",
     "frontendDist": "https://recruit.ibl.ai"
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app", "nsis", "msi", "deb", "appimage"],
+    "targets": ["dmg", "app", "nsis", "msi", "appimage"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -28,8 +27,7 @@
     "macOS": {
       "minimumSystemVersion": "10.15",
       "hardenedRuntime": true,
-      "entitlements": "entitlements.mac.plist",
-      "exceptionDomain": null
+      "entitlements": "entitlements.mac.plist"
     },
     "windows": {
       "certificateThumbprint": null,
@@ -50,27 +48,17 @@
       "minSdkVersion": 24
     }
   },
+  "plugins": {
+    "deep-link": {
+      "mobile": [{ "scheme": ["iblai-recruit"] }]
+    }
+  },
   "app": {
     "withGlobalTauri": true,
-    "windows": [],
     "security": {
       "csp": null,
       "capabilities": ["default"]
-    }
-  },
-  "plugins": {
-    "opener": {
-      "requireLiteralLeadingDot": false
     },
-    "deep-link": {
-      "mobile": [
-        { "host": "recruit.ibl.ai", "pathPrefix": ["/"] },
-        { "host": "login.iblai.app", "pathPrefix": ["/"] },
-        { "scheme": ["iblai-recruit", "ai.ibl.recruit"] }
-      ],
-      "desktop": {
-        "schemes": ["iblai-recruit", "ai.ibl.recruit"]
-      }
-    }
+    "windows": []
   }
 }

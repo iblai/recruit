@@ -1,36 +1,39 @@
-
 // Hide console window on Windows in release builds
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use tauri::{Emitter, Manager, WebviewWindowBuilder};
-#[cfg(any(target_os = "ios", target_os = "android"))]
-use tauri::Url;
-#[cfg(any(target_os = "ios", target_os = "android"))]
-use tauri_plugin_deep_link::DeepLinkExt;
-#[cfg(any(target_os = "ios", target_os = "android"))]
-use tauri::Listener;
 #[cfg(any(target_os = "ios", target_os = "android"))]
 use std::sync::Mutex;
+use tauri::utils::config::FrontendDist;
+#[cfg(any(target_os = "ios", target_os = "android"))]
+use tauri::Listener;
+use tauri::{Manager, Url, WebviewWindow, WebviewWindowBuilder};
+#[cfg(any(target_os = "ios", target_os = "android"))]
+use tauri_plugin_deep_link::DeepLinkExt;
 // OpenerExt is used for all non-iOS platforms (desktop and Android)
 #[cfg(not(target_os = "ios"))]
 use tauri_plugin_opener::OpenerExt;
 #[cfg(any(target_os = "ios", target_os = "macos"))]
 use {
     block::ConcreteBlock,
-    objc::{class, msg_send, sel, sel_impl},
-    objc::runtime::{Class, Object, BOOL, YES},
     objc::declare::ClassDecl,
+    objc::runtime::{Class, Object, BOOL, YES},
+    objc::{class, msg_send, sel, sel_impl},
     std::ffi::{CStr, CString},
     std::ptr,
     std::sync::Once,
 };
 
+// The URL scheme the sign-in returns on; must match tauri.conf.json and NEXT_PUBLIC_TAURI_CUSTOM_SCHEME.
+const AUTH_SCHEME: &str = "iblai-recruit";
+// The auth app's own scheme: a sign-in completed inside the webview returns on it.
+const AUTH_APP_SCHEME: &str = "iblai-mentor";
+
 // Global storage for pending deep links (mobile only)
 #[cfg(any(target_os = "ios", target_os = "android"))]
-static PENDING_DEEP_LINK: std::sync::OnceLock<Mutex<Option<String>>> = std::sync::OnceLock::new();
+static PENDING_DEEP_LINK: std::sync::OnceLock<Mutex<Option<Url>>> = std::sync::OnceLock::new();
 
 #[cfg(any(target_os = "ios", target_os = "android"))]
-fn get_pending_deep_link() -> &'static Mutex<Option<String>> {
+fn get_pending_deep_link() -> &'static Mutex<Option<Url>> {
     PENDING_DEEP_LINK.get_or_init(|| Mutex::new(None))
 }
 
@@ -48,7 +51,117 @@ const OAUTH_URL_PATTERNS: &[&str] = &[
 ];
 
 fn is_oauth_url(url: &str) -> bool {
-    OAUTH_URL_PATTERNS.iter().any(|pattern| url.contains(pattern))
+    OAUTH_URL_PATTERNS
+        .iter()
+        .any(|pattern| url.contains(pattern))
+}
+
+// ---------------------------------------------------------------------------
+// Desktop navigation guard: the window stays on the app and the platform
+// ---------------------------------------------------------------------------
+
+/// Hosts the desktop window may load besides the configured app URL: the
+/// platform, the webview's own origins, and embeds (on macOS and Linux an
+/// iframe's host is checked too). Self-hosted platforms add their domain.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+const ALLOWED_HOST_SUFFIXES: &[&str] = &[
+    "iblai.app",
+    "iblai.org",
+    "stripe.com",
+    "localhost",
+    "127.0.0.1",
+];
+
+/// The URL the window loads: `devUrl` under `tauri dev`, else a URL `frontendDist`.
+fn configured_app_url(config: &tauri::Config) -> Option<Url> {
+    if tauri::is_dev() {
+        config.build.dev_url.clone()
+    } else if let Some(FrontendDist::Url(url)) = &config.build.frontend_dist {
+        Some(url.clone())
+    } else {
+        None
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn configured_app_host(config: &tauri::Config) -> Option<String> {
+    configured_app_url(config)
+        .as_ref()
+        .and_then(|u| u.host_str())
+        .map(str::to_ascii_lowercase)
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn allowed_nav(url: &tauri::Url, app_host: Option<&str>) -> bool {
+    if matches!(url.scheme(), "tauri" | "asset") {
+        return true;
+    }
+    // No host (about:, data:, blob:) is never a match.
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    let host = host.to_ascii_lowercase();
+    app_host.is_some_and(|app| app.eq_ignore_ascii_case(&host))
+        || ALLOWED_HOST_SUFFIXES
+            .iter()
+            .any(|s| host == *s || host.ends_with(&format!(".{s}")))
+}
+
+// ---------------------------------------------------------------------------
+// Sign-in return: the auth app sends the webview back on a custom scheme
+// ---------------------------------------------------------------------------
+
+/// The app URL a sign-in return loads, if `url` is one: the auth app returns
+/// on `AUTH_SCHEME` from the system browser and on `AUTH_APP_SCHEME` from
+/// inside the webview, always to `/sso-login…`.
+fn sign_in_return(url: &Url, app_url: &Url) -> Option<Url> {
+    if url.scheme() != AUTH_SCHEME && url.scheme() != AUTH_APP_SCHEME {
+        return None;
+    }
+    // `scheme://sso-login-complete?…` parses its first segment as the host.
+    let path = match (url.path(), url.host_str()) {
+        ("" | "/", Some(host)) if !host.is_empty() => format!("/{host}"),
+        (path, _) => path.to_string(),
+    };
+    if !path.starts_with("/sso-login") && !path.starts_with("/mobile-sso-login") {
+        return None;
+    }
+    let mut target = app_url.clone();
+    target.set_path(&path);
+    target.set_query(url.query());
+    Some(target)
+}
+
+/// Load `url` in `window` from another thread: calling into a webview from
+/// inside its own navigation handler is not safe on every engine.
+fn go_to(window: WebviewWindow, url: Url) {
+    std::thread::spawn(move || {
+        if let Err(err) = window.navigate(url) {
+            println!("[ibl.ai] navigation failed: {err}");
+        }
+    });
+}
+
+/// A sign-in return delivered outside the webview (a deep link, the auth
+/// session's callback): load it, or keep it until the window exists.
+#[cfg(any(target_os = "ios", target_os = "android", target_os = "macos"))]
+fn handle_sign_in_url(app_handle: &tauri::AppHandle, raw_url: &str) {
+    let Ok(url) = Url::parse(raw_url) else {
+        return;
+    };
+    let Some(target) =
+        configured_app_url(app_handle.config()).and_then(|app_url| sign_in_return(&url, &app_url))
+    else {
+        return;
+    };
+    if let Some(window) = app_handle.get_webview_window("main") {
+        go_to(window, target);
+        return;
+    }
+    #[cfg(any(target_os = "ios", target_os = "android"))]
+    if let Ok(mut pending) = get_pending_deep_link().lock() {
+        *pending = Some(target);
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -114,7 +227,9 @@ unsafe fn get_context_provider_class() -> &'static Class {
         let mut decl = ClassDecl::new("IBLAuthContextProvider", superclass).unwrap();
 
         extern "C" fn presentation_anchor_for_session(
-            _: &Object, _: objc::runtime::Sel, _session: *mut Object,
+            _: &Object,
+            _: objc::runtime::Sel,
+            _session: *mut Object,
         ) -> *mut Object {
             unsafe { get_presentation_window() }
         }
@@ -138,7 +253,8 @@ unsafe fn get_context_provider_class() -> &'static Class {
 #[allow(unexpected_cfgs)]
 fn open_with_auth_session(url: &str, app_handle: &tauri::AppHandle) -> Result<(), String> {
     unsafe {
-        let c_url = CString::new(url).map_err(|_| "Failed to create CString from URL".to_string())?;
+        let c_url =
+            CString::new(url).map_err(|_| "Failed to create CString from URL".to_string())?;
         let ns_string: *mut Object =
             msg_send![class!(NSString), stringWithUTF8String: c_url.as_ptr()];
         if ns_string.is_null() {
@@ -151,7 +267,7 @@ fn open_with_auth_session(url: &str, app_handle: &tauri::AppHandle) -> Result<()
         }
 
         // Callback URL scheme
-        let scheme_c = CString::new("iblai-recruit").unwrap();
+        let scheme_c = CString::new(AUTH_SCHEME).unwrap();
         let scheme_ns: *mut Object =
             msg_send![class!(NSString), stringWithUTF8String: scheme_c.as_ptr()];
 
@@ -162,21 +278,19 @@ fn open_with_auth_session(url: &str, app_handle: &tauri::AppHandle) -> Result<()
 
         let app_handle_clone = app_handle.clone();
         let block = ConcreteBlock::new(move |callback_url: *mut Object, error: *mut Object| {
-            unsafe {
-                if !callback_url.is_null() {
-                    let url_string_ns: *mut Object = msg_send![callback_url, absoluteString];
-                    let url_c_str: *const i8 = msg_send![url_string_ns, UTF8String];
-                    if !url_c_str.is_null() {
-                        let url_str = CStr::from_ptr(url_c_str).to_string_lossy().to_string();
-                        handle_deep_link_url(&app_handle_clone, &url_str);
-                    }
-                } else if !error.is_null() {
-                    let description: *mut Object = msg_send![error, localizedDescription];
-                    let c_str: *const i8 = msg_send![description, UTF8String];
-                    if !c_str.is_null() {
-                        let error_str = CStr::from_ptr(c_str);
-                        println!("[ibl.ai] ASWebAuthenticationSession error: {:?}", error_str);
-                    }
+            if !callback_url.is_null() {
+                let url_string_ns: *mut Object = msg_send![callback_url, absoluteString];
+                let url_c_str: *const i8 = msg_send![url_string_ns, UTF8String];
+                if !url_c_str.is_null() {
+                    let url_str = CStr::from_ptr(url_c_str).to_string_lossy().to_string();
+                    handle_sign_in_url(&app_handle_clone, &url_str);
+                }
+            } else if !error.is_null() {
+                let description: *mut Object = msg_send![error, localizedDescription];
+                let c_str: *const i8 = msg_send![description, UTF8String];
+                if !c_str.is_null() {
+                    let error_str = CStr::from_ptr(c_str);
+                    println!("[ibl.ai] ASWebAuthenticationSession error: {:?}", error_str);
                 }
             }
         });
@@ -257,7 +371,9 @@ unsafe fn get_context_provider_class_macos() -> &'static Class {
         let mut decl = ClassDecl::new("IBLAuthContextProviderMac", superclass).unwrap();
 
         extern "C" fn presentation_anchor_for_session(
-            _: &Object, _: objc::runtime::Sel, _session: *mut Object,
+            _: &Object,
+            _: objc::runtime::Sel,
+            _session: *mut Object,
         ) -> *mut Object {
             unsafe { get_presentation_window_macos() }
         }
@@ -294,7 +410,7 @@ fn open_with_auth_session_macos(url: &str, app_handle: &tauri::AppHandle) -> Res
             return Err("Failed to create NSURL".to_string());
         }
 
-        let scheme_c = CString::new("iblai-recruit").unwrap();
+        let scheme_c = CString::new(AUTH_SCHEME).unwrap();
         let scheme_ns: *mut Object =
             msg_send![class!(NSString), stringWithUTF8String: scheme_c.as_ptr()];
 
@@ -305,21 +421,22 @@ fn open_with_auth_session_macos(url: &str, app_handle: &tauri::AppHandle) -> Res
 
         let app_handle_clone = app_handle.clone();
         let block = ConcreteBlock::new(move |callback_url: *mut Object, error: *mut Object| {
-            unsafe {
-                if !callback_url.is_null() {
-                    let url_string_ns: *mut Object = msg_send![callback_url, absoluteString];
-                    let url_c_str: *const i8 = msg_send![url_string_ns, UTF8String];
-                    if !url_c_str.is_null() {
-                        let url_str = CStr::from_ptr(url_c_str).to_string_lossy().to_string();
-                        handle_auth_session_callback_macos(&app_handle_clone, &url_str);
-                    }
-                } else if !error.is_null() {
-                    let description: *mut Object = msg_send![error, localizedDescription];
-                    let c_str: *const i8 = msg_send![description, UTF8String];
-                    if !c_str.is_null() {
-                        let error_str = CStr::from_ptr(c_str);
-                        println!("[ibl.ai] macOS ASWebAuthenticationSession error: {:?}", error_str);
-                    }
+            if !callback_url.is_null() {
+                let url_string_ns: *mut Object = msg_send![callback_url, absoluteString];
+                let url_c_str: *const i8 = msg_send![url_string_ns, UTF8String];
+                if !url_c_str.is_null() {
+                    let url_str = CStr::from_ptr(url_c_str).to_string_lossy().to_string();
+                    handle_sign_in_url(&app_handle_clone, &url_str);
+                }
+            } else if !error.is_null() {
+                let description: *mut Object = msg_send![error, localizedDescription];
+                let c_str: *const i8 = msg_send![description, UTF8String];
+                if !c_str.is_null() {
+                    let error_str = CStr::from_ptr(c_str);
+                    println!(
+                        "[ibl.ai] macOS ASWebAuthenticationSession error: {:?}",
+                        error_str
+                    );
                 }
             }
         });
@@ -362,55 +479,9 @@ fn open_with_auth_session_macos(url: &str, app_handle: &tauri::AppHandle) -> Res
     }
 }
 
-/// Handle ASWebAuthenticationSession callback URL on macOS.
-/// Desktop always has the main window available.
-#[cfg(target_os = "macos")]
-fn handle_auth_session_callback_macos(app_handle: &tauri::AppHandle, raw_url: &str) {
-    let parsed = match Url::parse(raw_url) {
-        Ok(url) => url,
-        Err(_) => return,
-    };
-
-    let scheme = parsed.scheme();
-    let host = parsed.host_str().unwrap_or("");
-
-    let is_custom_scheme = scheme == "iblai-recruit";
-    if !is_custom_scheme {
-        return;
-    }
-
-    let mut final_path = parsed.path().to_string();
-    if (final_path.is_empty() || final_path == "/") && !host.is_empty() {
-        final_path = format!("/{}", host);
-    }
-
-    // Only handle SSO-related paths
-    if !final_path.starts_with("/sso-login") && !final_path.starts_with("/sso-login-complete") {
-        return;
-    }
-
-    // Navigate the main window to the SSO callback
-    let mut target_path = final_path;
-    if let Some(query) = parsed.query() {
-        if !query.is_empty() {
-            target_path.push('?');
-            target_path.push_str(query);
-        }
-    }
-
-    if let Some(window) = app_handle.get_webview_window("main") {
-        if let Ok(js_url) = serde_json::to_string(&target_path) {
-            let _ = window.eval(&format!("window.location.href = {};", js_url));
-        }
-    }
-}
-
-// macOS needs Url for auth session callback parsing
-#[cfg(target_os = "macos")]
-use url::Url;
-
 // ---------------------------------------------------------------------------
-// Platform router: open OAuth URL via the best mechanism
+// Platform router: provider sign-in via the best mechanism, anything else in
+// the system browser
 // ---------------------------------------------------------------------------
 
 fn open_oauth_url(app: &tauri::AppHandle, url: &str) -> Result<(), String> {
@@ -428,6 +499,12 @@ fn open_oauth_url(app: &tauri::AppHandle, url: &str) -> Result<(), String> {
 
     #[cfg(target_os = "macos")]
     {
+        if !is_oauth_url(url) {
+            return app
+                .opener()
+                .open_url(url, None::<&str>)
+                .map_err(|e| format!("Failed to open URL: {}", e));
+        }
         let url_for_main = url.to_string();
         let app_handle = app.clone();
         app.run_on_main_thread(move || {
@@ -438,63 +515,30 @@ fn open_oauth_url(app: &tauri::AppHandle, url: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to schedule auth session: {}", e))
     }
 
-    #[cfg(not(any(target_os = "ios", target_os = "macos")))]
+    #[cfg(target_os = "android")]
     {
         app.opener()
             .open_url(url, None::<&str>)
             .map_err(|e| format!("Failed to open URL: {}", e))
     }
-}
 
-// ---------------------------------------------------------------------------
-// Mobile deep-link handler
-// ---------------------------------------------------------------------------
-
-#[cfg(any(target_os = "ios", target_os = "android"))]
-fn handle_deep_link_url(app_handle: &tauri::AppHandle, raw_url: &str) {
-    let parsed = match Url::parse(raw_url) {
-        Ok(url) => url,
-        Err(e) => {
-            println!("[ibl.ai] Failed to parse deep link URL: {}", e);
-            return;
+    // Windows, Linux: sign-in in the in-app popup.
+    #[cfg(not(any(target_os = "ios", target_os = "android", target_os = "macos")))]
+    {
+        if !is_oauth_url(url) {
+            return app
+                .opener()
+                .open_url(url, None::<&str>)
+                .map_err(|e| format!("Failed to open URL: {}", e));
         }
-    };
-
-    let scheme = parsed.scheme();
-    let host = parsed.host_str().unwrap_or("");
-
-    let is_custom_scheme = scheme == "iblai-recruit";
-    if !is_custom_scheme {
-        return;
-    }
-
-    let mut path = parsed.path().to_string();
-    if is_custom_scheme && (path.is_empty() || path == "/") && !host.is_empty() {
-        path = format!("/{}", host);
-    }
-
-    // Only handle SSO-related paths
-    if !path.starts_with("/sso-login") && !path.starts_with("/sso-login-complete") {
-        return;
-    }
-
-    let mut target_path = path;
-    if let Some(query) = parsed.query() {
-        if !query.is_empty() {
-            target_path.push('?');
-            target_path.push_str(query);
-        }
-    }
-
-    if let Some(window) = app_handle.get_webview_window("main") {
-        if let Ok(js_url) = serde_json::to_string(&target_path) {
-            let _ = window.eval(&format!("window.location.href = {};", js_url));
-        }
-    } else {
-        // Window not ready yet — store for later
-        if let Ok(mut pending) = get_pending_deep_link().lock() {
-            *pending = Some(target_path);
-        }
+        // Off the main thread: creating a webview inside on_navigation deadlocks WebView2.
+        let (app, url) = (app.clone(), url.to_string());
+        std::thread::spawn(move || {
+            if let Err(err) = open_oauth_in_popup(&url, &app) {
+                println!("[ibl.ai] Failed to open the sign-in popup: {}", err);
+            }
+        });
+        Ok(())
     }
 }
 
@@ -720,49 +764,71 @@ const MOBILE_INIT_SCRIPT: &str = r#"
 "#;
 
 // ---------------------------------------------------------------------------
-// Desktop: OAuth popup window (Windows, Linux — macOS uses ASWebAuthenticationSession)
+// Desktop: sign-in popup (Windows, Linux — macOS uses ASWebAuthenticationSession)
 // ---------------------------------------------------------------------------
 
-/// Open an OAuth URL in an in-app popup window.
-/// Used on Windows and Linux where ASWebAuthenticationSession is not available.
+/// Open a provider sign-in in a popup window. The callback, or a return to
+/// the app, is handed to the main window through its guard and the popup closes.
 #[cfg(not(any(target_os = "ios", target_os = "android", target_os = "macos")))]
 fn open_oauth_in_popup(url: &str, app_handle: &tauri::AppHandle) -> Result<(), String> {
-    let app_handle_clone = app_handle.clone();
+    let target: tauri::Url = url.parse().map_err(|e| format!("Invalid URL: {}", e))?;
+    if let Some(popup) = app_handle.get_webview_window("oauth-popup") {
+        popup
+            .navigate(target)
+            .map_err(|e| format!("Failed to reuse the sign-in popup: {}", e))?;
+        let _ = popup.set_focus();
+        return Ok(());
+    }
 
-    let _auth_window = WebviewWindowBuilder::new(
+    let app = app_handle.clone();
+    let app_url = configured_app_url(app_handle.config());
+    let app_host = configured_app_host(app_handle.config());
+    WebviewWindowBuilder::new(
         app_handle,
         "oauth-popup",
-        tauri::WebviewUrl::External(url.parse().map_err(|e| format!("Invalid URL: {}", e))?),
+        tauri::WebviewUrl::External(target),
     )
     .title("Sign In")
     .inner_size(500.0, 700.0)
     .center()
     .focused(true)
     .on_navigation(move |nav_url| {
-        let url_str = nav_url.as_str();
-
-        // Detect OAuth callback (auth completed)
-        let is_callback = url_str.contains("login.iblai.app")
-            && (url_str.contains("/callback")
-                || url_str.contains("code=")
-                || url_str.contains("token=")
-                || url_str.contains("access_token="));
-
-        if is_callback {
-            if let Some(main_win) = app_handle_clone.get_webview_window("main") {
-                let _ = main_win.eval(&format!("window.location.href = '{}';", url_str));
+        // A sign-in return on either scheme completes; so does a callback or a return to the app.
+        let sign_in = app_url.as_ref().and_then(|a| sign_in_return(nav_url, a));
+        if sign_in.is_none() {
+            // The provider's own pages (and the paths that start them) stay in the popup.
+            if is_oauth_url(nav_url.as_str()) {
+                return true;
+            }
+            let host = nav_url.host_str().unwrap_or("");
+            let is_callback = host.eq_ignore_ascii_case("login.iblai.app")
+                && (nav_url.path().contains("/callback")
+                    || nav_url.query().is_some_and(|q| {
+                        q.contains("code=") || q.contains("token=") || q.contains("access_token=")
+                    }));
+            let is_app_return = app_host
+                .as_deref()
+                .is_some_and(|app| app.eq_ignore_ascii_case(host));
+            if !(is_callback || is_app_return) {
+                return true;
+            }
+        }
+        let target = sign_in.unwrap_or_else(|| nav_url.clone());
+        // Off this thread: the hand-off and the close must not run inside the popup's handler.
+        let app = app.clone();
+        std::thread::spawn(move || {
+            if let Some(main_win) = app.get_webview_window("main") {
+                let _ = main_win.navigate(target);
                 let _ = main_win.set_focus();
             }
-            if let Some(oauth_win) = app_handle_clone.get_webview_window("oauth-popup") {
-                let _ = oauth_win.close();
+            if let Some(popup) = app.get_webview_window("oauth-popup") {
+                let _ = popup.close();
             }
-            return false;
-        }
-
-        true
+        });
+        false
     })
     .build()
-    .map_err(|e| format!("Failed to create OAuth popup: {}", e))?;
+    .map_err(|e| format!("Failed to create the sign-in popup: {}", e))?;
 
     Ok(())
 }
@@ -776,6 +842,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_os::init())
         .invoke_handler(tauri::generate_handler![
             open_external_url,
             allow_in_app_purchase,
@@ -788,7 +855,7 @@ pub fn run() {
                 let app_handle = app.handle().clone();
                 if let Ok(Some(urls)) = app.deep_link().get_current() {
                     for url in urls {
-                        handle_deep_link_url(&app_handle, url.as_str());
+                        handle_sign_in_url(&app_handle, url.as_str());
                     }
                 }
 
@@ -796,16 +863,18 @@ pub fn run() {
                 app.listen("deep-link://new-url", move |event: tauri::Event| {
                     if let Ok(urls) = serde_json::from_str::<Vec<String>>(event.payload()) {
                         for url in urls {
-                            handle_deep_link_url(&app_handle, &url);
+                            handle_sign_in_url(&app_handle, &url);
                         }
                     }
                 });
             }
 
-            // ---- Desktop: main window with on_navigation ----
+            // ---- Desktop: main window on the deployed app, guarded ----
             #[cfg(not(any(target_os = "ios", target_os = "android")))]
             {
                 let app_handle = app.handle().clone();
+                let app_url = configured_app_url(app.config());
+                let app_host = configured_app_host(app.config());
 
                 let _window = WebviewWindowBuilder::new(
                     app,
@@ -816,26 +885,28 @@ pub fn run() {
                 .inner_size(1200.0, 800.0)
                 .center()
                 .on_navigation(move |url| {
-                    let url_str = url.as_str();
-
-                    // OAuth URLs → open via platform-appropriate mechanism
-                    if is_oauth_url(url_str) {
-                        let _ = open_oauth_url(&app_handle, url_str);
+                    // A sign-in return (either scheme) lands on the app; checked
+                    // first, its payload can contain a provider's name.
+                    if let Some(target) = app_url.as_ref().and_then(|a| sign_in_return(url, a)) {
+                        if let Some(main) = app_handle.get_webview_window("main") {
+                            go_to(main, target);
+                        }
                         return false;
                     }
-
-                    // Allow app and auth domains
-                    url_str.starts_with("http://localhost")
-                        || url_str.starts_with("http://127.0.0.1")
-                        || url_str.starts_with("https://login.iblai.app")
-                        || url_str.starts_with("https://api.iblai.app")
-                        || url_str.starts_with("https://api.iblai.org")
-                        || url_str.starts_with("tauri://")
-                        || url_str.starts_with("asset://")
-                        || url_str.contains(".iblai.app")
-                        || url_str.contains(".iblai.org")
-                        || url_str.contains(".ibl.ai")
-                        || url_str.contains(".vercel.app")
+                    // Provider sign-in → the platform-appropriate mechanism
+                    if is_oauth_url(url.as_str()) {
+                        let _ = open_oauth_url(&app_handle, url.as_str());
+                        return false;
+                    }
+                    let allowed = allowed_nav(url, app_host.as_deref());
+                    if !allowed {
+                        // The origin only: a query can carry the session.
+                        println!(
+                            "[ibl.ai] blocked navigation: {}/",
+                            url.origin().ascii_serialization()
+                        );
+                    }
+                    allowed
                 })
                 .build()?;
             }
@@ -844,6 +915,7 @@ pub fn run() {
             #[cfg(any(target_os = "ios", target_os = "android"))]
             {
                 let app_handle = app.handle().clone();
+                let app_url = configured_app_url(app.config());
 
                 let window = WebviewWindowBuilder::new(
                     app,
@@ -852,6 +924,14 @@ pub fn run() {
                 )
                 .initialization_script(MOBILE_INIT_SCRIPT)
                 .on_navigation(move |url| {
+                    // A sign-in return inside the webview (the WebView cannot load
+                    // the scheme itself); checked before the provider patterns.
+                    if let Some(target) = app_url.as_ref().and_then(|a| sign_in_return(url, a)) {
+                        if let Some(main) = app_handle.get_webview_window("main") {
+                            go_to(main, target);
+                        }
+                        return false;
+                    }
                     let url_str = url.as_str();
                     if is_oauth_url(url_str) {
                         let _ = open_oauth_url(&app_handle, url_str);
@@ -862,12 +942,10 @@ pub fn run() {
                 .build()
                 .expect("Failed to create main window");
 
-                // Process any pending deep link
+                // A deep link that arrived before the window existed
                 if let Ok(mut pending) = get_pending_deep_link().lock() {
                     if let Some(pending_url) = pending.take() {
-                        if let Ok(js_url) = serde_json::to_string(&pending_url) {
-                            let _ = window.eval(&format!("window.location.href = {};", js_url));
-                        }
+                        go_to(window, pending_url);
                     }
                 }
             }
@@ -878,3 +956,75 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+#[cfg(all(test, not(any(target_os = "ios", target_os = "android"))))]
+mod tests {
+    use super::{allowed_nav, sign_in_return};
+
+    fn u(s: &str) -> tauri::Url {
+        s.parse().unwrap()
+    }
+
+    #[test]
+    fn a_sign_in_return_on_either_scheme_lands_on_the_app() {
+        let app = u("https://recruit.ibl.ai/");
+        let back = |s: &str| sign_in_return(&u(s), &app).map(|t| t.to_string());
+        assert_eq!(
+            back("iblai-recruit:///sso-login-complete?redirect-path=/p/x?y=1&data=%7B%7D"),
+            Some(
+                "https://recruit.ibl.ai/sso-login-complete?redirect-path=/p/x?y=1&data=%7B%7D"
+                    .into()
+            )
+        );
+        assert_eq!(
+            back("iblai-mentor:///sso-login-complete?data=%7B%7D&redirect-path=/"),
+            Some("https://recruit.ibl.ai/sso-login-complete?data=%7B%7D&redirect-path=/".into())
+        );
+        assert_eq!(
+            back("iblai-recruit://sso-login-complete?data=x"),
+            Some("https://recruit.ibl.ai/sso-login-complete?data=x".into())
+        );
+        assert_eq!(
+            back("iblai-recruit:///mobile-sso-login?data=x"),
+            Some("https://recruit.ibl.ai/mobile-sso-login?data=x".into())
+        );
+        assert_eq!(
+            back("https://recruit.ibl.ai/sso-login-complete?data=x"),
+            None
+        );
+        assert_eq!(back("iblai-recruit:///settings?data=x"), None);
+        assert_eq!(back("iblai-recruit://?data=x"), None);
+    }
+
+    #[test]
+    fn the_app_host_the_platform_and_the_webview_origins_are_allowed() {
+        let app = Some("my-app.example.com");
+        assert!(allowed_nav(&u("https://my-app.example.com/admin?x=1"), app));
+        assert!(allowed_nav(&u("https://MY-APP.example.com/"), app));
+        assert!(allowed_nav(
+            &u("https://login.iblai.app/login?app=custom"),
+            None
+        ));
+        assert!(allowed_nav(&u("https://api.iblai.org/dm/api/"), None));
+        assert!(allowed_nav(&u("https://js.stripe.com/v3/"), None));
+        assert!(allowed_nav(&u("http://localhost:3000/"), None));
+        assert!(allowed_nav(&u("http://tauri.localhost/index.html"), None));
+        assert!(allowed_nav(&u("tauri://localhost/index.html"), None));
+    }
+
+    #[test]
+    fn other_hosts_lookalikes_and_hostless_urls_are_blocked() {
+        let app = Some("my-app.example.com");
+        assert!(!allowed_nav(
+            &u("https://evil.example.com/?r=.iblai.app"),
+            app
+        ));
+        assert!(!allowed_nav(
+            &u("https://my-app.example.com.evil.net/"),
+            app
+        ));
+        assert!(!allowed_nav(&u("https://notiblai.app/"), None));
+        assert!(!allowed_nav(&u("https://evil.example.com/"), None));
+        assert!(!allowed_nav(&u("about:blank"), None));
+        assert!(!allowed_nav(&u("data:text/html,hi"), None));
+    }
+}

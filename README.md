@@ -72,9 +72,9 @@ ibl.ai/recruit meets your admissions team wherever they are — the same product
 | **Web**     | 🌐  | Coming soon at **recruit.ibl.ai** — today, [run it locally](#quick-start) or [deploy it yourself](#deployment)                                             |
 | **macOS**   | 🍎  | Native app (universal .dmg, Intel + Apple Silicon) — built by the [release workflow](.github/workflows/tauri-release-macos-dmg.yml); downloads coming soon |
 | **Windows** | 🪟  | Native app (x64 + ARM64 installer) — built by the [release workflow](.github/workflows/tauri-release-windows.yml); downloads coming soon                   |
-| **Linux**   | 🐧  | Native app (`.deb` / AppImage) — built by the [desktop build workflow](.github/workflows/tauri-build-desktop.yml); downloads coming soon                   |
+| **Linux**   | 🐧  | Native app (AppImage) — built by the [desktop build workflow](.github/workflows/tauri-build-desktop.yml); downloads coming soon                            |
 | **iOS**     | 📱  | Native app — built by the [iOS workflow](.github/workflows/tauri-build-ios.yml); App Store listing coming soon                                             |
-| **Android** | 🤖  | Coming soon — the Android project is not set up yet (`pnpm tauri android init`)                                                                            |
+| **Android** | 🤖  | Native app — built by the [Android workflow](.github/workflows/tauri-build-android.yml); Google Play listing coming soon                                   |
 
 </div>
 
@@ -276,22 +276,20 @@ Node.js 22+ and pnpm 12 (`corepack enable` picks the pinned version up from `pac
 
 ### Scripts
 
-| Command                      | What it does                                                           |
-| ---------------------------- | ---------------------------------------------------------------------- |
-| `pnpm dev`                   | Dev server on port 3000                                                |
-| `pnpm build`                 | Production build (standalone output; the regular output on Vercel)     |
-| `pnpm start`                 | Serve the production build                                             |
-| `pnpm typecheck`             | TypeScript 7                                                           |
-| `pnpm lint`                  | oxlint, zero warnings                                                  |
-| `pnpm format`                | oxfmt (`pnpm format:check` in CI)                                      |
-| `pnpm test`                  | Vitest unit tests                                                      |
-| `pnpm test:e2e`              | Playwright journeys (needs `e2e/.env.development`)                     |
-| `pnpm e2e:accounts`          | Once: the two e2e test accounts in a throwaway organization            |
-| `pnpm seed:demo --org <key>` | Seed a demo recruitment workspace (acts with `TOKEN` from `iblai.env`) |
-| `pnpm screenshots`           | Capture the README screenshots into `docs/images/`                     |
-| `pnpm tauri dev`             | Desktop shell in dev mode (needs Rust)                                 |
-| `pnpm tauri build`           | Desktop installer for the current platform                             |
-| `pnpm tauri ios dev`         | iOS simulator (needs Xcode)                                            |
+| Command                          | What it does                                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                       | Dev server on port 3000                                                                            |
+| `pnpm build`                     | Production build (standalone output; the regular output on Vercel)                                 |
+| `pnpm start`                     | Serve the production build                                                                         |
+| `pnpm typecheck`                 | TypeScript 7                                                                                       |
+| `pnpm lint`                      | oxlint, zero warnings                                                                              |
+| `pnpm format`                    | oxfmt (`pnpm format:check` in CI)                                                                  |
+| `pnpm test`                      | Vitest unit tests                                                                                  |
+| `pnpm test:e2e`                  | Playwright journeys (needs `e2e/.env.development`)                                                 |
+| `pnpm e2e:accounts`              | Once: the two e2e test accounts in a throwaway organization                                        |
+| `pnpm seed:demo --org <key>`     | Seed a demo recruitment workspace (acts with `TOKEN` from `iblai.env`)                             |
+| `pnpm screenshots`               | Capture the README screenshots into `docs/images/`                                                 |
+| `pnpm tauri:dev` / `tauri:build` | Desktop shell (needs Rust); `pnpm tauri:dev:ios` / `tauri:dev:android` for a simulator or emulator |
 
 ---
 

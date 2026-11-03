@@ -20,12 +20,11 @@ self-hosted. Register the deployed origin as an allowed redirect origin.
 Edit `src-tauri/tauri.conf.json`:
 
 ```json
-"build": { "devUrl": "https://crm.example.com", "frontendDist": "https://crm.example.com" }
+"build": { "frontendDist": "https://recruit.example.com" }
 ```
 
-and add the host to `src-tauri/capabilities/default.json` → `remote.urls` and
-to the navigation allow-list in `src-tauri/src/lib.rs` if it is not under
-`.ibl.ai` / `.iblai.app`.
+The app's own origin needs no capability entry. A self-hosted platform (its
+auth and API hosts) goes into `ALLOWED_HOST_SUFFIXES` in `src-tauri/src/lib.rs`.
 
 ## 3. macOS
 
@@ -53,35 +52,37 @@ or the Microsoft Store (`src-tauri/build-msix.ps1` — see the vibe
 ## 5. Linux
 
 ```bash
-pnpm tauri build --bundles deb,appimage
+pnpm tauri build --bundles appimage
 ```
+
+`tauri-build-desktop.yml` builds the same AppImage on demand.
 
 ## 6. iOS
 
 ```bash
-rustup target add aarch64-apple-ios aarch64-apple-ios-sim
-pnpm tauri ios init
-pnpm tauri ios dev "iPhone 16 Pro"            # simulator
-pnpm tauri ios build --export-method app-store-connect
+scripts/mobile-init.sh                        # once, on a Mac: generates src-tauri/gen/apple
+pnpm tauri:dev:ios "iPhone 16 Pro"            # simulator
+pnpm tauri:build:ios --export-method app-store-connect
 ```
 
 `bundle.iOS.developmentTeam` in `tauri.conf.json` is the Apple team; the
 `tauri-build-ios.yml` workflow exports an `.ipa` with an App Store Connect API
 key (`APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`). Submit
-with Fastlane per the vibe `iblai-vibe-ops-release` skill. The deep-link
-host entries in `tauri.conf.json` need an `apple-app-site-association` on the
-web host for universal links; the custom scheme `iblai-recruit://` works without it.
+with Fastlane per the vibe `iblai-vibe-ops-release` skill. Sign-in returns
+through the custom scheme `iblai-recruit://`, which needs no
+`apple-app-site-association`.
 
 ## 7. Android
 
 ```bash
-pnpm tauri android init
-pnpm tauri android dev
-pnpm tauri android build --aab
+scripts/mobile-init.sh                        # once, on Linux: generates src-tauri/gen/android
+pnpm tauri:dev:android
+pnpm tauri:build:android --aab                # or --apk
 ```
 
-Google Play cannot accept the first upload via API — create the listing and
-push one `.aab` by hand once.
+`tauri-build-android.yml` builds an unsigned `.aab` and `.apk` on demand. Sign
+the AAB with your upload keystore (Tauri's Android signing guide) before the
+first Play Console upload, which cannot go through the API.
 
 ## 8. Organization-locked builds
 
