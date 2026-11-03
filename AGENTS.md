@@ -119,8 +119,11 @@ appears in dialogs, record pages, tools and the landing-page mapping.
    pages use the institution's accent color from Settings → Branding, not the
    app brand.
 9. **Verify before you say it works:** `pnpm typecheck && pnpm lint && pnpm
-   format:check && pnpm test && pnpm build`; open the page; screenshot it.
-   Journeys live in `e2e/journeys/`.
+   format:check && pnpm test && pnpm build`; then `/iblai-vibe-ops-test`'s touch
+   test: the page in a real browser (Claude in Chrome, or the `chrome-devtools`
+   server in `.mcp.json`), every control you added, the console, the phone
+   width; no browser tool → say so, never call it tested. Journeys live in
+   `e2e/journeys/`.
 10. **Commits:** conventional messages; never `--no-verify`.
 
 ## Where things are
