@@ -99,16 +99,26 @@ with your credentials in `e2e/.env.development`).
 
 ## Native shell
 
+`src-tauri/` is the vibe `iblai-vibe-ops-build` shell with recruit's values; the
+generated Xcode and Gradle projects under `src-tauri/gen/` are committed.
+
 ```bash
-pnpm tauri dev            # desktop, loads the URL in src-tauri/tauri.conf.json
-pnpm tauri build          # installer for this platform
-pnpm tauri ios init && pnpm tauri ios dev "iPhone 16 Pro"
-pnpm tauri android init && pnpm tauri android dev
+pnpm tauri:dev                       # desktop, on the dev server (devUrl in src-tauri/tauri.conf.json)
+pnpm tauri dev -c '{"build":{"devUrl":"https://recruit.ibl.ai","beforeDevCommand":""}}'   # the hosted app
+pnpm tauri:build                     # installer for this platform
+pnpm tauri:dev:ios "iPhone 16 Pro"   # a name from `xcrun simctl list devices`
+pnpm tauri:dev:android "Pixel_9"     # a name from `emulator -list-avds`
 ```
 
-The shell loads the hosted app (`devUrl` / `frontendDist` in
-`src-tauri/tauri.conf.json`, `https://recruit.ibl.ai`). Point it at a local server
-by editing those two values (`http://localhost:3000`). OAuth providers open in
-the system browser (macOS / iOS: `ASWebAuthenticationSession`; Windows/Linux:
-a popup window); the deep link `iblai-recruit://mobile-sso-login?data=…` finishes
-the sign-in on mobile.
+First time on a machine, `scripts/mobile-init.sh` generates the project for its
+OS: macOS makes `gen/apple` (needs Xcode and rustup); Linux makes `gen/android`
+(needs rustup, JDK 17 and the Android SDK with Platform-Tools, Build-Tools, a
+platform and an NDK, exported as `JAVA_HOME`, `ANDROID_HOME`, `NDK_HOME`). It
+prints the one build that writes the URL scheme into the project; commit
+`src-tauri/gen/` after it.
+
+Sign-in: the auth app returns to the shell through `iblai-recruit://` from the
+system browser and through its own `iblai-mentor://` from inside the webview;
+`src-tauri/src/lib.rs` rewrites both onto the app URL (`/sso-login-complete`).
+Provider sign-in opens in `ASWebAuthenticationSession` (macOS, iOS), the system
+browser (Android) or a popup window (Windows, Linux).

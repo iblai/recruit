@@ -178,14 +178,14 @@ Node.js 22+ and pnpm 12 (`corepack enable` picks the pinned version up from `pac
 
 ### Scripts
 
-| Command                                       | What it does                                                                  |
-| --------------------------------------------- | ----------------------------------------------------------------------------- |
-| `pnpm dev`                                    | Dev server on port 3000                                                       |
-| `pnpm build` / `pnpm start`                   | Production build (standalone output; the regular output on Vercel) / serve it |
-| `pnpm typecheck` · `lint` · `format` · `test` | TypeScript 7 · oxlint, zero warnings · oxfmt (`format:check` in CI) · Vitest  |
-| `pnpm test:e2e`                               | Playwright journeys (needs `e2e/.env.development`)                            |
-| `pnpm seed:demo --org <key>`                  | Seed a demo recruitment workspace (acts with `TOKEN` from `iblai.env`)        |
-| `pnpm tauri dev` / `build`                    | Desktop shell (needs Rust); `pnpm tauri ios dev` for the simulator            |
+| Command                                       | What it does                                                                                       |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                                    | Dev server on port 3000                                                                            |
+| `pnpm build` / `pnpm start`                   | Production build (standalone output; the regular output on Vercel) / serve it                      |
+| `pnpm typecheck` · `lint` · `format` · `test` | TypeScript 7 · oxlint, zero warnings · oxfmt (`format:check` in CI) · Vitest                       |
+| `pnpm test:e2e`                               | Playwright journeys (needs `e2e/.env.development`)                                                 |
+| `pnpm seed:demo --org <key>`                  | Seed a demo recruitment workspace (acts with `TOKEN` from `iblai.env`)                             |
+| `pnpm tauri:dev` / `tauri:build`              | Desktop shell (needs Rust); `pnpm tauri:dev:ios` / `tauri:dev:android` for a simulator or emulator |
 
 ---
 

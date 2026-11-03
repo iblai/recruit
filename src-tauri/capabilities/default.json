@@ -5,14 +5,7 @@
   "windows": ["main"],
   "local": true,
   "remote": {
-    "urls": [
-      "https://recruit.ibl.ai/*",
-      "https://*.ibl.ai/*",
-      "https://*.iblai.app/*",
-      "https://*.vercel.app/*",
-      "http://127.0.0.1:*/*",
-      "http://localhost:*/*"
-    ]
+    "urls": ["https://*.iblai.app/*", "http://127.0.0.1:*/*", "http://localhost:*/*"]
   },
   "permissions": [
     "core:default",
@@ -27,6 +20,7 @@
     "core:webview:default",
     "core:window:allow-create",
     "opener:default",
-    "deep-link:default"
+    "deep-link:default",
+    "os:default"
   ]
 }
