@@ -10,7 +10,7 @@ configs:
 settingGroups:
   app:
     base:
-      PRODUCT_NAME: ibl.ai Recruit
+      PRODUCT_NAME: Recruit
       PRODUCT_BUNDLE_IDENTIFIER: ai.ibl.recruit
       DEVELOPMENT_TEAM: L4FWRM8W5Z
 targetTemplates:
