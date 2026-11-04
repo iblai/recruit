@@ -276,20 +276,23 @@ Node.js 22+ and pnpm 12 (`corepack enable` picks the pinned version up from `pac
 
 ### Scripts
 
-| Command                          | What it does                                                                                       |
-| -------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `pnpm dev`                       | Dev server on port 3000                                                                            |
-| `pnpm build`                     | Production build (standalone output; the regular output on Vercel)                                 |
-| `pnpm start`                     | Serve the production build                                                                         |
-| `pnpm typecheck`                 | TypeScript 7                                                                                       |
-| `pnpm lint`                      | oxlint, zero warnings                                                                              |
-| `pnpm format`                    | oxfmt (`pnpm format:check` in CI)                                                                  |
-| `pnpm test`                      | Vitest unit tests                                                                                  |
-| `pnpm test:e2e`                  | Playwright journeys (needs `e2e/.env.development`)                                                 |
-| `pnpm e2e:accounts`              | Once: the two e2e test accounts in a throwaway organization                                        |
-| `pnpm seed:demo --org <key>`     | Seed a demo recruitment workspace (acts with `TOKEN` from `iblai.env`)                             |
-| `pnpm screenshots`               | Capture the README screenshots into `docs/images/`                                                 |
-| `pnpm tauri:dev` / `tauri:build` | Desktop shell (needs Rust); `pnpm tauri:dev:ios` / `tauri:dev:android` for a simulator or emulator |
+| Command                                                                                | What it does                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                                                                             | Dev server on port 3000                                                                                                                                                       |
+| `pnpm build`                                                                           | Production build (standalone output; the regular output on Vercel)                                                                                                            |
+| `pnpm start`                                                                           | Serve the production build                                                                                                                                                    |
+| `pnpm typecheck`                                                                       | TypeScript 7                                                                                                                                                                  |
+| `pnpm lint`                                                                            | oxlint, zero warnings                                                                                                                                                         |
+| `pnpm format`                                                                          | oxfmt (`pnpm format:check` in CI)                                                                                                                                             |
+| `pnpm test`                                                                            | Vitest unit tests                                                                                                                                                             |
+| `pnpm test:e2e`                                                                        | Playwright journeys (needs `e2e/.env.development`)                                                                                                                            |
+| `pnpm e2e:accounts`                                                                    | Once: the two e2e test accounts in a throwaway organization                                                                                                                   |
+| `pnpm seed:demo --org <key>`                                                           | Seed a demo recruitment workspace (acts with `TOKEN` from `iblai.env`)                                                                                                        |
+| `pnpm screenshots`                                                                     | Capture the README screenshots into `docs/images/`                                                                                                                            |
+| `pnpm tauri:dev` / `tauri:build`                                                       | Desktop shell (needs Rust); `pnpm tauri:dev:ios` / `tauri:dev:android` for a simulator or emulator                                                                            |
+| `pnpm shell:smoke` / `shell:smoke:windows`                                             | The shell headless against a local page: the navigation guard and both sign-in returns (CI runs the Linux one on every shell change)                                          |
+| `pnpm shell:touch` / `shell:touch:windows` / `shell:touch:ios` / `shell:touch:android` | The built shell on this machine (Linux, macOS, Windows), on an iOS simulator or on an Android phone, with the touch-test checklist ([docs](docs/development.md#native-shell)) |
+| `pnpm shell:clear` [`android`, `ios`] / `shell:clear:windows`                          | Forgets the shell's cookies, localStorage and caches on this machine, the phone or the simulator, so the next touch test starts signed out                                    |
 
 ---
 
@@ -414,14 +417,15 @@ Sign-in is the platform's hosted round trip; `TenantProvider` re-authenticates w
 
 This project is covered by Vitest unit tests in [`__tests__/`](__tests__/) and Playwright end-to-end journeys in [`e2e/`](e2e/). **Run the journeys for any change** so nothing regresses:
 
-| Command                            | What it does                                                                                                              |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm test`                        | Vitest — config, organization resolution, SSO landing, the CRM client, the tool server, landing pages, the house journeys |
-| `pnpm e2e:accounts`                | Once: an organization admin and a member in the throwaway organization `iblai.env` names                                  |
-| `pnpm test:e2e`                    | Playwright journeys (auth, shell, recruit, sample, house) in Chromium, Firefox and WebKit                                 |
-| `pnpm test:e2e --project=chromium` | The same journeys in one browser                                                                                          |
-| `pnpm test:e2e:ui`                 | Interactive UI mode                                                                                                       |
-| `pnpm test:e2e:headed`             | Run with a visible browser                                                                                                |
+| Command                            | What it does                                                                                                               |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm test`                        | Vitest — config, organization resolution, SSO landing, the CRM client, the tool server, landing pages, the house journeys  |
+| `pnpm shell:smoke`                 | The Tauri shell headless (`shell:smoke:windows` on Windows): the navigation guard and both sign-in returns on a local page |
+| `pnpm e2e:accounts`                | Once: an organization admin and a member in the throwaway organization `iblai.env` names                                   |
+| `pnpm test:e2e`                    | Playwright journeys (auth, shell, recruit, sample, house) in Chromium, Firefox and WebKit                                  |
+| `pnpm test:e2e --project=chromium` | The same journeys in one browser                                                                                           |
+| `pnpm test:e2e:ui`                 | Interactive UI mode                                                                                                        |
+| `pnpm test:e2e:headed`             | Run with a visible browser                                                                                                 |
 
 See [e2e/COVERAGE.md](e2e/COVERAGE.md) for current coverage. Coverage must not regress — add or update a journey whenever you change user-facing behavior.
 

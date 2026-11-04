@@ -108,6 +108,12 @@ pnpm tauri dev -c '{"build":{"devUrl":"https://recruit.ibl.ai","beforeDevCommand
 pnpm tauri:build                     # installer for this platform
 pnpm tauri:dev:ios "iPhone 16 Pro"   # a name from `xcrun simctl list devices`
 pnpm tauri:dev:android "Pixel_9"     # a name from `emulator -list-avds`
+pnpm shell:smoke                     # headless: the guard and both sign-in returns against a local page (CI runs it)
+pnpm shell:touch                     # the installer's app against the hosted app, with the checklist (Linux, macOS)
+pnpm shell:touch:android             # the debug APK on the phone over adb: scheme, launch, deep link, checklist
+pnpm shell:touch:ios "iPhone 16 Pro" # the app on a simulator through `tauri ios dev`: URL types, the scheme, checklist
+pnpm shell:touch:windows             # Windows: the debug exe (the one with a console) against the hosted app; `shell:smoke:windows` headless
+pnpm shell:clear [android | ios]     # forget the shell's cookies and localStorage so the next run starts signed out (Windows: shell:clear:windows)
 ```
 
 First time on a machine, `scripts/mobile-init.sh` generates the project for its
@@ -122,3 +128,9 @@ system browser and through its own `iblai-mentor://` from inside the webview;
 `src-tauri/src/lib.rs` rewrites both onto the app URL (`/sso-login-complete`).
 Provider sign-in opens in `ASWebAuthenticationSession` (macOS, iOS), the system
 browser (Android) or a popup window (Windows, Linux).
+
+`tauri-check.yml` checks the shell on every change under `src-tauri/`: fmt, check
+and test on Linux, macOS and Windows, the iOS arm from the Mac, then
+`pnpm shell:smoke` headless. The touch tests (`pnpm shell:touch`, `shell:touch:windows`,
+`shell:touch:ios`, `shell:touch:android`) are yours: a throwaway organization, the checklist
+each prints, the log judged at the end.
