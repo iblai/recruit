@@ -103,12 +103,11 @@ with your credentials in `e2e/.env.development`).
 generated Xcode and Gradle projects under `src-tauri/gen/` are committed.
 
 ```bash
-pnpm tauri:dev                       # desktop, on the dev server (devUrl in src-tauri/tauri.conf.json)
-pnpm tauri dev -c '{"build":{"devUrl":"https://recruit.ibl.ai","beforeDevCommand":""}}'   # the hosted app
+pnpm tauri:dev                       # desktop, loading the live app (devUrl in src-tauri/tauri.conf.json)
+pnpm tauri dev -c '{"build":{"devUrl":"http://localhost:3000","beforeDevCommand":"pnpm dev"}}'   # the web app from the dev server, inside the shell
 pnpm tauri:build                     # installer for this platform
 pnpm tauri:dev:ios "iPhone 16 Pro"   # a name from `xcrun simctl list devices`
 pnpm tauri:dev:android "Pixel_9"     # a name from `emulator -list-avds`
-pnpm tauri:dev:ios "iPhone 16 Pro" -c '{"build":{"devUrl":"https://recruit.iblai.me","beforeDevCommand":""}}'   # the live app on the simulator (tauri:dev:android alike)
 pnpm shell:smoke                     # headless: the guard and both sign-in returns against a local page (CI runs it)
 pnpm shell:touch                     # the installer's app against the hosted app, with the checklist (Linux, macOS)
 pnpm shell:touch:android             # the debug APK on the phone over adb, loading https://recruit.iblai.me: scheme, launch, deep link, checklist

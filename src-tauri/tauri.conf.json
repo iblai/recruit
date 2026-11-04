@@ -4,9 +4,8 @@
   "identifier": "ai.ibl.recruit",
   "version": "0.1.0",
   "build": {
-    "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "pnpm dev",
-    "frontendDist": "https://recruit.ibl.ai"
+    "devUrl": "https://recruit.iblai.me",
+    "frontendDist": "https://recruit.iblai.me"
   },
   "bundle": {
     "active": true,
@@ -50,7 +49,11 @@
   },
   "plugins": {
     "deep-link": {
-      "mobile": [{ "scheme": ["iblai-recruit"] }]
+      "mobile": [
+        {
+          "scheme": ["iblai-recruit"]
+        }
+      ]
     }
   },
   "app": {

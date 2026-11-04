@@ -966,29 +966,29 @@ mod tests {
 
     #[test]
     fn a_sign_in_return_on_either_scheme_lands_on_the_app() {
-        let app = u("https://recruit.ibl.ai/");
+        let app = u("https://recruit.iblai.me/");
         let back = |s: &str| sign_in_return(&u(s), &app).map(|t| t.to_string());
         assert_eq!(
             back("iblai-recruit:///sso-login-complete?redirect-path=/p/x?y=1&data=%7B%7D"),
             Some(
-                "https://recruit.ibl.ai/sso-login-complete?redirect-path=/p/x?y=1&data=%7B%7D"
+                "https://recruit.iblai.me/sso-login-complete?redirect-path=/p/x?y=1&data=%7B%7D"
                     .into()
             )
         );
         assert_eq!(
             back("iblai-mentor:///sso-login-complete?data=%7B%7D&redirect-path=/"),
-            Some("https://recruit.ibl.ai/sso-login-complete?data=%7B%7D&redirect-path=/".into())
+            Some("https://recruit.iblai.me/sso-login-complete?data=%7B%7D&redirect-path=/".into())
         );
         assert_eq!(
             back("iblai-recruit://sso-login-complete?data=x"),
-            Some("https://recruit.ibl.ai/sso-login-complete?data=x".into())
+            Some("https://recruit.iblai.me/sso-login-complete?data=x".into())
         );
         assert_eq!(
             back("iblai-recruit:///mobile-sso-login?data=x"),
-            Some("https://recruit.ibl.ai/mobile-sso-login?data=x".into())
+            Some("https://recruit.iblai.me/mobile-sso-login?data=x".into())
         );
         assert_eq!(
-            back("https://recruit.ibl.ai/sso-login-complete?data=x"),
+            back("https://recruit.iblai.me/sso-login-complete?data=x"),
             None
         );
         assert_eq!(back("iblai-recruit:///settings?data=x"), None);
