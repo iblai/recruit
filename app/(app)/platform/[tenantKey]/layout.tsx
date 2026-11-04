@@ -68,27 +68,33 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
           <CommandPaletteProvider>
             <BreadcrumbProvider>
               <AssistantPanelProvider>
-                <SidebarProvider defaultOpen={defaultOpen}>
+                <SidebarProvider defaultOpen={defaultOpen} className="min-h-0">
                   <AppSidebar />
-                  <SidebarInset className="flex h-dvh min-w-0 flex-col overflow-hidden bg-[var(--sidebar-bg,#fafbfc)]">
-                    <TopBar />
-                    {sample ? <SampleNotice /> : null}
-                    <div className="flex min-h-0 flex-1">
-                      <AdminGate>
-                        <main
-                          id="main-content"
-                          className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
-                        >
-                          <FirstRunGate
-                            org={tenantKey}
-                            isAdmin={isAdmin}
-                            onboardingPath={href("/onboarding")}
+                  {/* The shell fills the safe area (body carries the insets as padding), as a div: the mobile shell's init script sizes every <main> to 100%. */}
+                  <SidebarInset
+                    asChild
+                    className="flex h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-w-0 flex-col overflow-hidden bg-[var(--sidebar-bg,#fafbfc)]"
+                  >
+                    <div>
+                      <TopBar />
+                      {sample ? <SampleNotice /> : null}
+                      <div className="flex min-h-0 flex-1">
+                        <AdminGate>
+                          <main
+                            id="main-content"
+                            className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
                           >
-                            <CrmScopeGate>{children}</CrmScopeGate>
-                          </FirstRunGate>
-                        </main>
-                      </AdminGate>
-                      <AssistantPanel />
+                            <FirstRunGate
+                              org={tenantKey}
+                              isAdmin={isAdmin}
+                              onboardingPath={href("/onboarding")}
+                            >
+                              <CrmScopeGate>{children}</CrmScopeGate>
+                            </FirstRunGate>
+                          </main>
+                        </AdminGate>
+                        <AssistantPanel />
+                      </div>
                     </div>
                   </SidebarInset>
                 </SidebarProvider>

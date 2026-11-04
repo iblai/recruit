@@ -88,7 +88,7 @@ export function AssistantPanel() {
     <aside
       className={cn(
         "flex w-full shrink-0 flex-col border-l border-[var(--border-color,#e5e7eb)] bg-white",
-        "fixed inset-y-0 right-0 z-30 max-w-[28rem] shadow-2xl md:static md:z-auto md:w-[26rem] md:max-w-none md:shadow-none xl:w-[30rem]",
+        "fixed inset-y-0 right-0 z-30 max-w-[28rem] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] shadow-2xl md:static md:z-auto md:w-[26rem] md:max-w-none md:py-0 md:shadow-none xl:w-[30rem]",
       )}
       aria-label={VOCAB.chiefOfStaff}
     >

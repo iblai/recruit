@@ -27,4 +27,17 @@ describe("house shell", () => {
   it("Lucide renders at 1.75 through one rule", () => {
     expect(read("app/globals.css")).toContain('.lucide[stroke-width="2"]');
   });
+
+  it("the shell and the Chief of Staff panel fit the phone's safe area", () => {
+    const layout = read("app/(app)/platform/[tenantKey]/layout.tsx");
+    expect(layout).toMatch(/<SidebarProvider\s+defaultOpen=\{defaultOpen\}\s+className="min-h-0"/);
+    expect(layout).toMatch(/<SidebarInset\s+asChild/);
+    expect(layout).toContain(
+      "h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))]",
+    );
+    expect(layout).not.toContain("h-dvh");
+    const panel = read("components/recruit/chief-of-staff/assistant-panel.tsx");
+    expect(panel).toContain("pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]");
+    expect(panel).toContain("md:py-0");
+  });
 });
