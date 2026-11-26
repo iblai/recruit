@@ -5,6 +5,8 @@ import { withApp } from "@/lib/crm/app";
 import config from "@/lib/iblai/config";
 import type { FormField, LandingPage, SubmissionIssue } from "@/lib/recruit/landing-pages";
 import { pickUtm, submissionOutcome } from "@/lib/recruit/landing-pages";
+import type { AdTags } from "@/lib/recruit/ad-tags";
+import { reportSignUp } from "@/components/landing/ad-tags";
 
 /**
  * The prospect-facing form. Plain controlled inputs (no SDK, no shadcn — this
@@ -18,11 +20,14 @@ export function LandingForm({
   org,
   accent,
   preview = false,
+  tags,
 }: {
   page: LandingPage;
   org: string;
   accent: string;
   preview?: boolean;
+  /** The ad tags to tell about a sign-up. */
+  tags?: AdTags;
 }) {
   const [values, setValues] = useState<Record<string, string | boolean>>({});
   const [website, setWebsite] = useState("");
@@ -64,6 +69,7 @@ export function LandingForm({
         setError(outcome.message);
         return;
       }
+      if (tags) reportSignUp(tags);
       setDone({ title: page.successTitle || "Thanks", message: page.successMessage ?? "" });
     } catch {
       setError("We could not reach the server. Check your connection and try again.");

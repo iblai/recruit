@@ -35,7 +35,7 @@ One agent your whole admissions team talks to. Prospects, schools, applications,
 
 <br>
 
-[Why ibl.ai/recruit](#why-iblairecruit) · [Every platform](#every-platform-one-codebase) · [Features](#features) · [Case studies](#case-studies) · [Screenshots](#screenshots) · [Quick Start](#quick-start) · [Deployment](#deployment) · [Architecture](#architecture)
+[End to end](#what-recruit-does-end-to-end) · [Why ibl.ai/recruit](#why-iblairecruit) · [Every platform](#every-platform-one-codebase) · [Features](#features) · [Case studies](#case-studies) · [Screenshots](#screenshots) · [Quick Start](#quick-start) · [Deployment](#deployment) · [Architecture](#architecture)
 
 </div>
 
@@ -46,6 +46,19 @@ One agent your whole admissions team talks to. Prospects, schools, applications,
 **SOC 2 Type II** &nbsp;·&nbsp; Universities, enterprises, and governments run on ibl.ai — [read the case studies →](https://ibl.ai/case-studies)
 
 </div>
+
+---
+
+## What Recruit does, end to end
+
+Recruit finds students where they already talk about their plans, brings the ones a person picks into the CRM, learns more about them, reaches out, and follows them to enrollment. Agents do the legwork; people decide, and see all of it.
+
+1. **Find where students talk.** On a schedule (a saved search in _Settings → Schedule_: a program, an area, a class year, the channels) or when asked in chat, the Chief of Staff reads public posts on Instagram, Reddit, X and YouTube through the university's own Apify connector. It proposes a shortlist under _Needs you_, with what each student said and why they match. _Scoreboard_ shows **where students are talking**: which channels, and which subreddits, hashtags and searches, produce students.
+2. **Keep the ones who fit.** A person ticks who is kept. Each becomes a prospect at the first stage, **Inquiry**, tagged with their channel ("Found on Instagram"), and is copied into the organization's CRM app with the same tag. Nobody else is kept, except the handles of people passed over, for 90 days, so they are not proposed again.
+3. **Learn more about them.** _Enrich from Instagram_ (or Reddit, X, YouTube) on a student's record has the Chief of Staff read their public profile by their username: bio, website, school, place, class year, interests and a few of their own posts. It saves them to the record, next to the name their profile shows, and never looks them up anywhere else.
+4. **Reach them.** Recruit, the agent students talk to, answers them on the landing pages and taster courses at any hour; every chat is under _Conversations_. The Chief of Staff works out who is due a message and why (a first message to a student found on a social channel, the taster course for their program, the next event, the next step of their application) and drafts each one under _Needs you_. A person sends it: an email through the university's mail connector with _Approve and send_, a direct message by hand from the university's account. Replies arrive in the university's own mailbox; two-way email, where agents read and answer replies, waits for the platform's agent mailbox (AgentEmailbox).
+5. **Follow them to enrollment.** Every prospect moves Inquiry → Engaged → Applicant → Enrolled, with applications in the admissions funnel, and _Scoreboard_ counts applications completed, deposits and melt.
+6. **Keep people in charge.** Nothing is sent or published without a person's press, and everything the agents do is in view: drafts, shortlists and handoffs under _Needs you_, every chat under _Conversations_, each record's timeline (a note for every profile read), each scheduled run's log in the platform's task list, and the platform's audit log.
 
 ---
 
@@ -194,6 +207,45 @@ Recruitment fields the API has no column for — graduation year, entry term, en
 Admins build pages in _Landing pages_: copy, highlights, hero image, the form's questions (each mapped to where its answer lands — name, email, phone, school, program, term, graduation year, consent, or "keep as extra field"), and routing (which funnel and stage the application opens in, the source code, tags, the counselor who owns submissions). A live preview shows the page with its form; **Publish** flips the page live at `/p/<org>/<slug>`; _Share_ gives the link, UTM guidance and an embed snippet.
 
 Each page is a CRM web form on the platform. A visitor's answers go straight to its public endpoint, which reuses the prospect with that email or creates one, opens the application, tags both and logs a note of the answers — with no credential in this app. Identical answers within ten minutes count once, a honeypot drops bots, and the list counts each page's submissions. The pages are plain server-rendered React: no session, no SDK bundle. Details: [docs/landing-pages.md](docs/landing-pages.md).
+
+---
+
+## Recruit: the agent prospective students talk to
+
+The Chief of Staff works for the team. **Recruit** is the organization's second agent, and it works in public, as [sovereignuniversity.ai/recruit](https://sovereignuniversity.ai/recruit) describes it: a prospective student or a parent finds it on every landing page, beside the sign-up form, at `/chat/<org>`, or in the launcher on the university's own site, and talks to it without signing in.
+
+- **Answers from the university's own sources** — an admin uploads the catalog, costs, deadlines and aid policy under _Recruit → Sources_; the agent answers only from them, names the document, and offers a counselor when they do not answer
+- **Signs people up** — a landing page can be an **event** (date, place, sign-up deadline, in the event's own time zone); Recruit lists the open ones and books a person in, which files the prospect, the application and the visit as a form submission does
+- **Hands over to a counselor** — a handoff is a task under **Needs you**, with the reason, a summary and the conversation; the program's counselor gets it when the organization named one
+- **Reaches out, with a person's approval** — every morning the Chief of Staff works out who is due a message (a sign-up with no confirmation, an event three days away, the next step of an application's stage, a student found on a social channel), writes each one and leaves it under Needs you. Who is due, and how often, is code ([`lib/recruit/outreach.ts`](lib/recruit/outreach.ts)): a cadence per stage (the taster course for their program, the next open event, a check-in), one open draft per person, a week between messages, a daily allowance of drafts set in _Settings → Schedule_, nothing for someone who asked not to be contacted
+- **Finds students, and a person picks** — asked for students who meet some criteria, or on a saved search's schedule (_Settings → Schedule_: a program, an area, a class year, the channels, daily or weekly), the Chief of Staff reads public posts on Instagram, Reddit, X and YouTube through Apify's scrapers and proposes a shortlist under Needs you, with what each person said and why they match. A person ticks who is kept; nobody else becomes a prospect, and only the handles of those passed over are kept, for 90 days, so they are not proposed again. The one message to someone found is a direct message a staff member sends by hand, from the university's own account; YouTube has no direct messages, so someone found there is not written to
+- **Keeps where they came from** — a kept student is tagged with their channel ("Found on Instagram") and copied into the CRM app's own records, tag and all, with a note of what they said; when they ask not to be contacted, the copy is tagged "Do not contact" too, and Recruit never takes that tag off; someone kept again whose copy carries it is marked Do not contact in Recruit as well
+- **Reads a kept student's profile** — _Enrich from Instagram_ (or Reddit, X, YouTube) on their record has the Chief of Staff read their public profile on that channel, and nowhere else, and keep what it shows about their studies: bio, website, school, place, class year, interests and a few of their own posts
+- **Taster courses** — in _New landing page_ an admin picks a program and Recruit drafts a short public course from the university's sources: a few lessons, the sign-up form, and Recruit beside them, answering from the lessons. Staff edit and publish it like any page, and outreach links each student to the course for their program
+- **Sends only what was approved** — a person sends a draft from their own mail or phone, or presses _Approve and send_, for one email or for a batch whose every message is listed in full: each email goes out through the university's mail connector, held by a separate sending agent the Chief of Staff cannot reach ([`lib/recruit/outbox.ts`](lib/recruit/outbox.ts))
+- **Measures its ads** — a Google tag and a Meta Pixel (_Settings → Branding_) load on the landing pages, a sign-up is reported as a conversion, and the ad's click ID is kept with the sign-up
+- **Says it is an AI** — on the page, and it is told to in its first reply; the platform's guardrail is set to block a reply that promises admission, a scholarship or an aid amount
+- **A page from a brief** — in _New landing page_ an admin describes the campaign and Recruit drafts the page from the same sources; it is a draft until a person publishes it
+- **Staff stay in charge** — _Conversations_ shows every chat, _Scoreboard_ the numbers the platform records ("Not recorded" for the ones it does not), and _Recruit_ holds its sources, voice, AI notice, guardrails, model, the sites allowed to show the chat and who gets a handoff
+
+**What a visitor can make it do** is fixed in code, not in the prompt ([`lib/mcp/student-tools.ts`](lib/mcp/student-tools.ts)). No tool returns a person's record, and an existing prospect's details never change from chat:
+
+| Tool                | What it does                                                |
+| ------------------- | ----------------------------------------------------------- |
+| `list_events`       | The event pages open for sign-up                            |
+| `book_visit`        | Signs the person up for one                                 |
+| `save_inquiry`      | Records what they asked; honors "do not contact me" at once |
+| `request_counselor` | Hands the conversation to a person                          |
+
+**Setup:** an org admin opens _Recruit_ and clicks once, and the agent answers from its sources at once. Signing people up and handing over from chat need a public https address the platform can call (a tunnel in development) and a platform that limits API keys by role: the `recruit-student-tools` key is only ever minted with the CRM User role, and setup stops rather than fall back to an owner key. Its tools are that one server and nothing else, and setup turns off the virtual machine, memory and sub-agents the platform's agent template switches on. The launcher is one line on the university's site, and only the sites listed under _Recruit → Website_ may show the chat:
+
+```html
+<script src="https://<this app>/embed.js" data-platform="<org>" async></script>
+```
+
+**People a connector finds:** finding stays off until an admin writes, in _Settings → Connectors_, why the university may contact people it finds; whether it may, under each channel's terms and the law where it works, is its counsel's decision. The card there gives the Apify address limited to the seven scrapers (two each for Instagram, X and YouTube, one for Reddit; X's need a paid Apify plan), and says so when the Chief of Staff holds an Apify connector that can run anything else. A connector added with an API key is saved for each person, and the platform then never sends its key; the card says so and shares the key with the Chief of Staff in one press. A student found on a social channel comes in only when a person picks them from a shortlist, and gets one message on that channel, sent by hand (none on YouTube); they are never emailed at an address they published, and never written to again unless they sign up. Contacts with a published work address (school counselors, advisers, published lists) come in through `add_found_prospects` and are written to by email. Every message to someone found carries a line the code adds saying who is writing and how to stop. The CRM keeps only the people a person picked, and the handles of those passed over for 90 days; the Chief of Staff's chat history and the platform's audit log still hold what a search found, and platform admins can read them. The CRM app's copy of a kept student goes one way: edits made there never come back to Recruit. The app ships no scraper and decides nothing about what one collects.
+
+**Not built:** texts and calls; a direct message or comment sent by the app, and a second message to a found student who did not answer; looking a student up anywhere but the channel they were found on; a course on the learning platform for one student; a consent prompt for the ad tags, which load for every visitor; an alert to the counselor outside the app; a returning visitor's earlier messages; connectors to Slate, Salesforce or Banner; agents reading and answering students' email replies, which waits for the platform's agent mailbox (AgentEmailbox). Only an admin can send through the mail connector, and "sent" is what the sending agent reported: the app cannot see the mailbox.
 
 ---
 

@@ -214,6 +214,8 @@ export interface Activity {
   done_at: string | null;
   deal?: number | null;
   person?: string | null;
+  /** One of `deal`, `person` or `organization` is required. */
+  organization?: string | null;
   owner?: number | null;
   reminder_at?: string | null;
   reminder_sent: boolean;
@@ -234,6 +236,7 @@ export type ActivityInput = Partial<
     | "is_done"
     | "deal"
     | "person"
+    | "organization"
     | "owner"
     | "reminder_at"
     | "metadata"
@@ -306,6 +309,8 @@ export interface PersonListParams extends ListParams {
   created_at__gte?: string;
   created_at__lte?: string;
   metadata__has_key?: string;
+  /** `false` lists the people a merge retired. */
+  active?: boolean;
 }
 
 export interface OrganizationListParams extends ListParams {
@@ -341,6 +346,11 @@ export interface ActivityListParams extends ListParams {
   schedule_from__gte?: string;
   schedule_from__lte?: string;
   metadata__has_key?: string;
+  /** Title, comment or location contains the words. */
+  search?: string;
+  /** Created in this window (`YYYY-MM-DD`, inclusive). */
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface TagListParams extends ListParams {

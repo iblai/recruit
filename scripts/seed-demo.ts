@@ -1,7 +1,8 @@
 /**
  * Seed a demo recruitment workspace into an organization: a Fall admissions
  * funnel, sources, tags, three schools, a dozen prospects with applications
- * and activities, and a published "Request information" landing page.
+ * and activities, a published "Request information" landing page, a nursing
+ * open house, and (once Recruit is set up) the catalog it answers from.
  *
  *   pnpm seed:demo --org <org-key> [--term "Fall 2027"] [--app-url https://…]
  *
@@ -12,6 +13,9 @@
  * prospects are matched by email so a re-run does not duplicate them.
  */
 import { askAuthorization, bootstrap, argValue } from "./_env";
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { platformBase, platformFetch } from "../lib/iblai/platform";
 import {
   ADMISSIONS_FUNNEL,
   ADMISSIONS_SOURCES,
@@ -28,6 +32,7 @@ import {
   DEMO_TAGS as TAGS,
   DEMO_TERM,
   demoLandingPage,
+  demoOpenHouse,
   lifecycleFor,
 } from "../lib/recruit/demo-data";
 
@@ -159,11 +164,57 @@ async function main() {
     await crm.createWebForm(toWebForm(page));
     log(`Published landing page ${landingPageUrl(appUrl, org, page.slug)}`);
   } else log("Landing page exists");
+  if (!forms.some((f) => f.slug === "nursing-open-house")) {
+    const page = newLandingPage(demoOpenHouse(term));
+    await crm.createWebForm(toWebForm(page));
+    log(`Published the open house ${landingPageUrl(appUrl, org, page.slug)}`);
+  } else log("Open house exists");
   const settings = await readRecruitSettingsServer(org);
   if (!settings.institutionName)
     await writeRecruitSettings(org, { institutionName: DEMO_INSTITUTION }, authorization);
+  await trainCatalog(authorization, settings.studentAgentId);
 
   console.log("\n✓ Done. Open the app and ask the Chief of Staff for today's brief.\n");
+}
+
+/** Give Recruit the demo catalog to answer from; files it already has are left alone. */
+async function trainCatalog(authorization: string, agentId?: string) {
+  if (!agentId) {
+    log("Recruit is not set up: set it up in the app, then run the seed again for its sources");
+    return;
+  }
+  const { username } = await platformFetch<{ username: string }>(
+    "/dm/api/core/token/verify/",
+    authorization,
+  );
+  const docs = `/dm/api/ai-index/orgs/${encodeURIComponent(org)}/users/${encodeURIComponent(username)}/documents`;
+  const have = await platformFetch<{ results?: Array<{ document_name?: string; url?: string }> }>(
+    `${docs}/pathways/${encodeURIComponent(agentId)}/?limit=100`,
+    authorization,
+  );
+  const known = JSON.stringify(have?.results ?? []);
+  const folder = resolve(process.cwd(), "demo/catalog");
+  for (const name of readdirSync(folder).filter((f) => f.endsWith(".md"))) {
+    if (known.includes(name)) {
+      log(`Source ${name} exists`);
+      continue;
+    }
+    const body = new FormData();
+    body.set(
+      "file",
+      new Blob([readFileSync(resolve(folder, name))], { type: "text/markdown" }),
+      name,
+    );
+    body.set("pathway", agentId);
+    body.set("type", "file");
+    const res = await fetch(`${platformBase()}${docs}/train/`, {
+      method: "POST",
+      headers: { Authorization: authorization },
+      body,
+    });
+    if (!res.ok) throw new Error(`Could not train ${name} (${res.status}): ${await res.text()}`);
+    log(`Source ${name} sent for training`);
+  }
 }
 
 main().catch((e) => {

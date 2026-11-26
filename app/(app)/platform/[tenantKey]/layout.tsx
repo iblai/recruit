@@ -108,8 +108,10 @@ export default function TenantLayout({ children }: { children: ReactNode }) {
 }
 
 /**
- * `/settings` and `/admin/*` are admin-only, in Admin mode only. They read the
- * organization itself, so on the sample they open the upgrade dialog instead.
+ * `/settings`, `/admin/*`, Recruit, the scoreboard and the conversation list are
+ * admin-only, in Admin mode only. They read the organization itself, so on the
+ * sample they open the upgrade dialog instead. One conversation stays open to
+ * the counselor it was handed to.
  */
 function AdminGate({ children }: { children: ReactNode }) {
   const { adminMode } = useAdminMode();
@@ -118,7 +120,10 @@ function AdminGate({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const { href } = useSession();
-  const gated = /\/platform\/[^/]+\/(admin|settings)(\/|$)/.test(pathname);
+  const gated =
+    /\/platform\/[^/]+\/((admin|settings|recruit|scoreboard)(\/|$)|conversations\/?$)/.test(
+      pathname,
+    );
   const blocked = gated && (!adminMode || sample);
 
   useEffect(() => {

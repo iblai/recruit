@@ -92,7 +92,7 @@ export function errorResult(message: string): ToolResult {
   return { content: [{ type: "text", text: message }], isError: true };
 }
 
-/** Minimal JSON-Schema check: required keys present, declared primitive types respected. */
+/** Minimal JSON-Schema check: required keys, primitive types, enums, `maxLength` and `pattern`. */
 export function validateArgs(schema: JsonSchema, args: unknown): string | null {
   if (args === undefined || args === null) args = {};
   if (typeof args !== "object" || Array.isArray(args)) return "arguments must be an object";
@@ -134,6 +134,12 @@ export function validateArgs(schema: JsonSchema, args: unknown): string | null {
     if (!ok) return `"${key}" must be ${types.join(" or ")}`;
     const en = def.enum as unknown[] | undefined;
     if (en && !en.includes(v)) return `"${key}" must be one of ${en.map(String).join(", ")}`;
+    if (typeof v === "string") {
+      const max = def.maxLength as number | undefined;
+      if (max !== undefined && v.length > max) return `"${key}" is at most ${max} characters`;
+      const pattern = def.pattern as string | undefined;
+      if (pattern && !new RegExp(pattern).test(v)) return `"${key}" is not in the expected format`;
+    }
   }
   return null;
 }

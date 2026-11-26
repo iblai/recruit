@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Link2, Merge, MoreHorizontal, Trash2, UserPlus, Users } from "lucide-react";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ActivityTimeline } from "@/components/crm/activity-timeline";
 import { LifecycleBadge } from "@/components/crm/badges";
@@ -32,6 +34,7 @@ import { PersonLinkUserDialog } from "@/components/crm/people/person-link-user-d
 import { PersonMergeDialog } from "@/components/crm/people/person-merge-dialog";
 import { useSession } from "@/hooks/use-session";
 import {
+  errorMessage,
   errorStatus,
   useAttachPersonTagMutation,
   useDeletePersonMutation,
@@ -43,6 +46,9 @@ import {
 } from "@/lib/crm/api";
 import { formatDateTime, formatRelative } from "@/lib/crm/format";
 import { LIFECYCLE_STAGES, type LifecycleStage, type PersonInput } from "@/lib/crm/types";
+import { FoundCard } from "@/components/recruit/found-card";
+import { adminFetch } from "@/lib/recruit/admin-client";
+import { foundOf } from "@/lib/recruit/found";
 import { metaPatch, PROSPECT_FIELDS, readMeta, type MetaField } from "@/lib/recruit/fields";
 import { LIFECYCLE_LABELS, VOCAB } from "@/lib/recruit/vocabulary";
 
@@ -84,9 +90,15 @@ export default function PersonDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ? decodeURIComponent(params.id) : "";
   const router = useRouter();
-  const { href } = useSession();
+  const { href, tenantKey } = useSession();
 
   const { data: person, isLoading, error } = useGetPersonQuery(id, { skip: !id });
+  const t = useTranslations("recruit.conversations");
+  const tf = useTranslations("recruit.found");
+  // The chats Recruit had with this person, by the ids its tools left on the record.
+  const conversations = (
+    Array.isArray(person?.metadata?.conversations) ? person.metadata.conversations : []
+  ).filter((c): c is string => typeof c === "string");
   const { data: orgs } = useListOrganizationsQuery({ page_size: 100 });
   const [updatePerson] = useUpdatePersonMutation();
   const [patchMetadata] = usePatchMetadataMutation();
@@ -155,6 +167,34 @@ export default function PersonDetailPage() {
       </div>
     );
   }
+
+  const found = foundOf(person);
+  const optedOut = person.metadata?.opted_out === true;
+  // A person's choice only: no agent tool writes it.
+  const setOptedOut = async (on: boolean) => {
+    try {
+      await patchMetadata({
+        kind: "persons",
+        id,
+        patch: on
+          ? { opted_out: true, opted_out_at: new Date().toISOString() }
+          : { opted_out: null, opted_out_at: null },
+      }).unwrap();
+    } catch (err) {
+      toastApiError(err, "Could not save this change");
+      return;
+    }
+    // The CRM app's copy of a student found on a social channel is marked too; Recruit never unmarks it.
+    if (!on || !found?.platform) return;
+    try {
+      await adminFetch("/api/admin/prospects/found-sync", {
+        method: "POST",
+        json: { org: tenantKey, personId: id },
+      });
+    } catch (err) {
+      toast.error(tf("copyNotUpdated", { detail: errorMessage(err) }));
+    }
+  };
 
   const canInvite = Boolean(person.primary_email) && !person.platform_user;
   const inviteHint = person.platform_user
@@ -368,6 +408,13 @@ export default function PersonDetailPage() {
                   placeholder="Add an external id"
                 />
               </FieldRow>
+              <FieldRow label={tf("doNotContact")} hint={tf("doNotContactHint")}>
+                <Switch
+                  checked={optedOut}
+                  onCheckedChange={(on) => void setOptedOut(on)}
+                  aria-label={tf("doNotContact")}
+                />
+              </FieldRow>
               <FieldRow label="Tags" hint="Shared labels; manage them under Tags.">
                 <TagPicker
                   tags={person.tags ?? []}
@@ -387,6 +434,8 @@ export default function PersonDetailPage() {
                 </span>
               </FieldRow>
             </dl>
+
+            <FoundCard person={person} />
 
             <h2 className="text-muted-foreground mt-5 mb-2 text-xs font-semibold tracking-wide uppercase">
               Recruitment
@@ -434,6 +483,9 @@ export default function PersonDetailPage() {
               <TabsList variant="line">
                 <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 <TabsTrigger value="deals">{VOCAB.application.many}</TabsTrigger>
+                {conversations.length ? (
+                  <TabsTrigger value="conversations">{t("title")}</TabsTrigger>
+                ) : null}
               </TabsList>
               <TabsContent value="timeline" className="pt-4">
                 <ActivityTimeline person={person.id} />
@@ -443,6 +495,20 @@ export default function PersonDetailPage() {
                   person={person.id}
                   emptyDescription={`${person.name} has not started an ${VOCAB.application.lower} yet.`}
                 />
+              </TabsContent>
+              <TabsContent value="conversations" className="pt-4">
+                <ul data-testid="person-conversations" className="grid gap-1 text-sm">
+                  {conversations.map((id, i) => (
+                    <li key={id}>
+                      <Link
+                        href={href(`/conversations/${id}`)}
+                        className="text-gray-900 underline-offset-4 hover:underline"
+                      >
+                        {t("transcript")} {i + 1}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </TabsContent>
             </Tabs>
           </section>

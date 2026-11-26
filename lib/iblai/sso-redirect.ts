@@ -31,3 +31,13 @@ export function resolveSsoRedirectPath(
 
   return redirectPath;
 }
+
+/** Whether `target` is on the Auth SPA's origin: the only place the redirect hop may send a browser. */
+export function isAuthSpaTarget(target: string | null, authUrl: string): target is string {
+  if (!target) return false;
+  try {
+    return new URL(target).origin === new URL(authUrl).origin;
+  } catch {
+    return false;
+  }
+}

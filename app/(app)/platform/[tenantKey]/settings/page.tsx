@@ -2,7 +2,17 @@
 
 import { Suspense, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Filter, Info, Palette, Radio, Settings, Sparkles } from "lucide-react";
+import {
+  CalendarClock,
+  Filter,
+  Info,
+  Palette,
+  Plug,
+  Radio,
+  Settings,
+  Sparkles,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/crm/page-header";
@@ -12,10 +22,20 @@ import { LeadSourcesTab } from "@/components/crm/settings/lead-sources-tab";
 import { AboutTab } from "@/components/crm/settings/about-tab";
 import { ChiefOfStaffTab } from "@/components/recruit/settings/chief-of-staff-tab";
 import { BrandingTab } from "@/components/recruit/settings/branding-tab";
+import { ConnectorsTab } from "@/components/recruit/settings/connectors-tab";
+import { ScheduleTab } from "@/components/recruit/settings/schedule-tab";
 import { VOCAB } from "@/lib/recruit/vocabulary";
 import { useSession } from "@/hooks/use-session";
 
-const TABS = ["agent", "pipelines", "sources", "branding", "about"] as const;
+const TABS = [
+  "agent",
+  "schedule",
+  "connectors",
+  "pipelines",
+  "sources",
+  "branding",
+  "about",
+] as const;
 type TabValue = (typeof TABS)[number];
 
 export default function SettingsPage() {
@@ -45,6 +65,7 @@ function SettingsView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { href } = useSession();
+  const t = useTranslations("recruit.settings");
   useBreadcrumbs([{ label: "Settings", href: href("/settings") }]);
 
   const tab = useMemo<TabValue>(() => {
@@ -72,6 +93,12 @@ function SettingsView() {
             <TabsTrigger value="agent">
               <Sparkles /> {VOCAB.chiefOfStaff}
             </TabsTrigger>
+            <TabsTrigger value="schedule">
+              <CalendarClock /> {t("schedule")}
+            </TabsTrigger>
+            <TabsTrigger value="connectors">
+              <Plug /> {t("connectors")}
+            </TabsTrigger>
             <TabsTrigger value="pipelines">
               <Filter /> Funnels
             </TabsTrigger>
@@ -88,6 +115,12 @@ function SettingsView() {
 
           <TabsContent value="agent">
             <ChiefOfStaffTab />
+          </TabsContent>
+          <TabsContent value="schedule">
+            <ScheduleTab />
+          </TabsContent>
+          <TabsContent value="connectors">
+            <ConnectorsTab />
           </TabsContent>
           <TabsContent value="pipelines">
             <PipelinesTab />

@@ -9,6 +9,7 @@
  * Pure module: no React, no SDK; unit-tested in __tests__/landing-pages.test.ts.
  */
 import type { PublicWebForm, WebForm, WebFormInput } from "../crm/types";
+import { clickIds } from "./ad-tags";
 import { PROSPECT_FIELDS } from "./fields";
 
 export type FormFieldType =
@@ -59,6 +60,29 @@ export interface FormField {
   help?: string;
 }
 
+/** A dated event a page signs people up for. Instants are ISO strings; `timeZone` is where it happens. */
+export interface PageEvent {
+  startsAt: string;
+  endsAt?: string;
+  /** IANA zone the date and time are shown in, whoever is looking. */
+  timeZone: string;
+  place?: string;
+  /** Sign-ups close here; without it, when the event starts. */
+  signUpBy?: string;
+}
+
+/** One lesson of a taster course: short paragraphs, and a question to think about. */
+export interface Lesson {
+  title: string;
+  body: string[];
+  question?: string;
+}
+
+/** A short taster course a page carries, read without an account. */
+export interface PageCourse {
+  lessons: Lesson[];
+}
+
 export interface LandingPage {
   /** URL segment under `/p/<org>/`. */
   slug: string;
@@ -93,6 +117,10 @@ export interface LandingPage {
   /** Lifecycle stage new prospects get. */
   lifecycleStage?: "lead" | "qualified" | "opportunity";
   published: boolean;
+  /** Set when the page is an event (open house, visit day). */
+  event?: PageEvent;
+  /** Set when the page is a taster course. */
+  course?: PageCourse;
   createdAt: string;
   updatedAt: string;
 }
@@ -180,6 +208,8 @@ export function newLandingPage(input: Partial<LandingPage> & { title: string }):
     ownerId: input.ownerId ?? null,
     lifecycleStage: input.lifecycleStage ?? "lead",
     published: input.published ?? false,
+    ...(input.event && { event: input.event }),
+    ...(input.course && { course: input.course }),
     createdAt: input.createdAt ?? now,
     updatedAt: now,
   };
@@ -300,6 +330,8 @@ export function validateLandingPage(
     add("tags", "Each tag can be listed once.");
   if (!SOURCE_RE.test(page.sourceCode ?? ""))
     add("sourceCode", "Source codes use letters, numbers, - and _ (at most 64).");
+  if (page.event) for (const problem of eventProblems(page.event)) add("event", problem);
+  if (page.course) for (const problem of courseProblems(page.course)) add("course", problem);
   if (!publish) return issues;
 
   if (!page.headline.trim()) add("headline", "Write a headline.");
@@ -328,6 +360,10 @@ export function toWebForm(page: LandingPage): WebFormInput {
   const defaults: Record<string, string> = {};
   if (page.program?.trim()) defaults.program = page.program.trim();
   if (page.term?.trim()) defaults.term = page.term.trim();
+  // Sign-ups are counted by this, whether they came through the form or the chat.
+  if (page.event) defaults.event = page.slug;
+  // So nobody is offered the course they signed up on.
+  if (page.course) defaults.course = page.slug;
   return {
     slug: page.slug,
     name: page.title.trim(),
@@ -363,6 +399,8 @@ export function toWebForm(page: LandingPage): WebFormInput {
       ctaLabel: page.ctaLabel ?? "",
       program: page.program ?? "",
       term: page.term ?? "",
+      ...(page.event && { event: page.event }),
+      ...(page.course && { course: page.course }),
     },
     success_title: page.successTitle ?? "",
     success_message: page.successMessage ?? "",
@@ -384,7 +422,140 @@ function pageCopy(name: string, copy: Record<string, unknown> = {}) {
     ctaLabel: text(copy.ctaLabel),
     program: text(copy.program),
     term: text(copy.term),
+    ...(readEvent(copy.event) && { event: readEvent(copy.event) }),
+    ...(readCourse(copy.course) && { course: readCourse(copy.course) }),
   };
+}
+
+const instant = (v: unknown) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? v : "");
+
+function validZone(zone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The event kept in a web form's `metadata`, or nothing when it is not one. */
+function readEvent(v: unknown): PageEvent | undefined {
+  if (!v || typeof v !== "object") return undefined;
+  const e = v as Record<string, unknown>;
+  const startsAt = instant(e.startsAt);
+  const timeZone = text(e.timeZone);
+  if (!startsAt || !validZone(timeZone)) return undefined;
+  return {
+    startsAt,
+    timeZone,
+    ...(instant(e.endsAt) && { endsAt: instant(e.endsAt) }),
+    ...(text(e.place).trim() && { place: text(e.place).trim() }),
+    ...(instant(e.signUpBy) && { signUpBy: instant(e.signUpBy) }),
+  };
+}
+
+/** What is wrong with an event's dates, in words for the editor. */
+export function eventProblems(event: PageEvent): string[] {
+  const problems: string[] = [];
+  const at = (v?: string) => (v ? Date.parse(v) : Number.NaN);
+  const start = at(event.startsAt);
+  if (Number.isNaN(start)) problems.push("Give the event a date and time.");
+  if (!validZone(event.timeZone)) problems.push("The event needs a time zone.");
+  if (event.endsAt && !(at(event.endsAt) > start)) problems.push("The event ends after it starts.");
+  if (event.signUpBy && !(at(event.signUpBy) <= start))
+    problems.push("Sign-ups close before the event starts.");
+  if ((event.place ?? "").length > 200) problems.push("Keep the place under 200 characters.");
+  return problems;
+}
+
+/** The course kept in a web form's `metadata`, or nothing when it has no lesson. */
+function readCourse(v: unknown): PageCourse | undefined {
+  const raw = (v as { lessons?: unknown } | null | undefined)?.lessons;
+  const lessons = (Array.isArray(raw) ? raw : [])
+    .filter((l): l is Record<string, unknown> => !!l && typeof l === "object")
+    .map((l) => ({
+      title: text(l.title).trim(),
+      body: lines(l.body),
+      ...(text(l.question).trim() && { question: text(l.question).trim() }),
+    }))
+    .filter((l) => l.title);
+  return lessons.length ? { lessons } : undefined;
+}
+
+export const COURSE_LIMITS = {
+  lessons: [2, 6],
+  title: 120,
+  paragraphs: 4,
+  paragraph: 600,
+  question: 200,
+};
+
+/** What is wrong with a course, in words for the editor. The whole page has to fit the platform's 64 KB. */
+export function courseProblems(course: PageCourse): string[] {
+  const problems: string[] = [];
+  const max = COURSE_LIMITS;
+  const n = course.lessons.length;
+  if (n < max.lessons[0] || n > max.lessons[1])
+    problems.push(`A course has ${max.lessons[0]} to ${max.lessons[1]} lessons.`);
+  course.lessons.forEach((lesson, i) => {
+    const name = lesson.title.trim() || `Lesson ${i + 1}`;
+    if (!lesson.title.trim()) problems.push(`Lesson ${i + 1} needs a title.`);
+    if (lesson.title.length > max.title)
+      problems.push(`Keep the title of "${name}" under ${max.title} characters.`);
+    const body = lesson.body.filter((p) => p.trim());
+    if (!body.length) problems.push(`"${name}" needs some text.`);
+    if (body.length > max.paragraphs)
+      problems.push(`Keep "${name}" to ${max.paragraphs} paragraphs.`);
+    if (body.some((p) => p.length > max.paragraph))
+      problems.push(`Keep each paragraph of "${name}" under ${max.paragraph} characters.`);
+    if ((lesson.question ?? "").length > max.question)
+      problems.push(`Keep the question of "${name}" under ${max.question} characters.`);
+  });
+  return problems;
+}
+
+/** Whether people can still sign up: before the sign-up-by time, else before the start. */
+export function eventIsOpen(event: PageEvent, now = new Date()): boolean {
+  return now.getTime() < Date.parse(event.signUpBy ?? event.startsAt);
+}
+
+/**
+ * "Saturday, March 13 · 10:00 AM – 1:00 PM", in the event's own time zone.
+ * Empty while a draft's event has no start or zone; an end not after the start is left out.
+ */
+export function eventWhen(event: PageEvent, locale = "en"): string {
+  const start = new Date(event.startsAt);
+  if (Number.isNaN(start.getTime()) || !validZone(event.timeZone)) return "";
+  const day = new Intl.DateTimeFormat(locale, {
+    timeZone: event.timeZone,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(start);
+  const time = new Intl.DateTimeFormat(locale, {
+    timeZone: event.timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  const end = new Date(event.endsAt ?? "");
+  const hours = end > start ? time.formatRange(start, end) : time.format(start);
+  // ICU's narrow and thin spaces vary by version; plain ones read the same everywhere.
+  return `${day} · ${hours}`.replace(/[\u00a0\u2009\u202f]/g, " ");
+}
+
+/** An instant as a `datetime-local` value in this browser's zone; empty when it is not one. */
+export function toLocalInput(iso?: string): string {
+  const d = new Date(iso ?? "");
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number, width = 2) => String(n).padStart(width, "0");
+  // Four digits: a year being typed ("0002") has to stay a value the field accepts.
+  return `${pad(d.getFullYear(), 4)}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** A `datetime-local` value as an instant; nothing while the field is empty. */
+export function fromLocalInput(value: string): string | undefined {
+  const d = new Date(value);
+  return value && !Number.isNaN(d.getTime()) ? d.toISOString() : undefined;
 }
 
 /** A saved web form as the editor shows it. */
@@ -447,11 +618,12 @@ export function fromPublicWebForm(form: PublicWebForm): LandingPage {
 export function pickUtm(params: URLSearchParams | Record<string, string>): Record<string, string> {
   const entries =
     params instanceof URLSearchParams ? [...params.entries()] : Object.entries(params);
-  const out: Record<string, string> = {};
+  // Click IDs first so the platform's cap of 8 never drops them.
+  const out: Record<string, string> = clickIds(params);
   for (const [k, v] of entries) {
+    if (Object.keys(out).length >= 8) break;
     if (!/^utm_[a-z0-9_]{1,32}$/i.test(k) || !v) continue;
     out[k.toLowerCase()] = String(v).slice(0, 200);
-    if (Object.keys(out).length >= 8) break;
   }
   return out;
 }

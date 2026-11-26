@@ -1,5 +1,8 @@
-import type { LandingPage } from "@/lib/recruit/landing-pages";
+import { eventIsOpen, eventWhen, type LandingPage } from "@/lib/recruit/landing-pages";
+import { publicMessages, type Locale } from "@/lib/recruit/locale";
 import { LandingForm } from "@/components/landing/landing-form";
+import { AdTags as AdTagsLoader } from "@/components/landing/ad-tags";
+import type { AdTags } from "@/lib/recruit/ad-tags";
 
 export interface Branding {
   name: string;
@@ -7,6 +10,10 @@ export interface Branding {
   accentColor: string;
   contactEmail: string;
 }
+
+// The form's card, at a height a conversation fits in.
+const CHAT_FRAME =
+  "mt-8 h-[28rem] w-full rounded-2xl border border-gray-200 bg-white shadow-sm sm:h-[32rem]";
 
 /**
  * The public landing page: a short hero in the institution's accent color,
@@ -19,40 +26,38 @@ export function LandingPageView({
   org,
   branding,
   preview = false,
+  locale = "en",
+  chatSrc,
+  tags,
 }: {
   page: LandingPage;
   org: string;
   branding: Branding;
   preview?: boolean;
+  /** The language of the page's own words (the copy is the university's). */
+  locale?: Locale;
+  /** The chat frame's address; absent when the platform has no Recruit. `preview` shows only its place. */
+  chatSrc?: string;
+  /** The platform's validated ad tags; absent or empty loads none. */
+  tags?: AdTags;
 }) {
   const accent = branding.accentColor;
+  const words = publicMessages(locale).page;
+  // Empty while an editor is still typing the event's date.
+  const when = page.event ? eventWhen(page.event, locale) : "";
+  const closed = !!page.event && !!when && !eventIsOpen(page.event);
+  const live = !preview && tags && (tags.googleTagId || tags.metaPixelId) ? tags : undefined;
+  const tagsLine = live
+    ? live.googleTagId && live.metaPixelId
+      ? words.tagsBoth
+      : live.googleTagId
+        ? words.tagsGoogle
+        : words.tagsMeta
+    : "";
   return (
     <div className="min-h-full bg-[#f7f8fa] text-gray-900">
-      <header
-        className="text-white"
-        style={{
-          background: `linear-gradient(135deg, ${accent} 0%, ${shade(accent, -0.25)} 100%)`,
-        }}
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            {branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={branding.logoUrl}
-                alt=""
-                className="h-8 w-auto max-w-[9rem] rounded bg-white/90 p-1"
-              />
-            ) : null}
-            <span className="truncate text-sm font-semibold tracking-wide uppercase opacity-95">
-              {branding.name}
-            </span>
-          </div>
-          <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
-            Admissions
-          </span>
-        </div>
-      </header>
+      {live ? <AdTagsLoader tags={live} /> : null}
+      <BrandHeader branding={branding} />
 
       <main className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-12 lg:py-16">
         <section className="min-w-0">
@@ -61,6 +66,71 @@ export function LandingPageView({
           </h1>
           {page.subheadline ? (
             <p className="mt-4 text-lg leading-8 text-gray-600">{page.subheadline}</p>
+          ) : null}
+          {page.event && when ? (
+            <p data-testid="event" className="mt-6 text-[15px] leading-6 text-gray-800">
+              <span className="font-semibold">{when}</span>
+              {page.event.place ? (
+                <>
+                  <br />
+                  <span className="text-gray-600">{page.event.place}</span>
+                </>
+              ) : null}
+            </p>
+          ) : null}
+          {page.course?.lessons.length ? (
+            <div data-testid="lessons" className="mt-8 grid gap-3">
+              {page.course.lessons.map((lesson, i) => (
+                <details
+                  key={i}
+                  open={i === 0}
+                  className="group rounded-2xl border border-gray-200 bg-white shadow-sm"
+                >
+                  <summary className="flex cursor-pointer list-none items-start gap-3 rounded-2xl px-5 py-4 text-[15px] font-semibold text-gray-900 focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+                    <span className="text-gray-500 tabular-nums">{i + 1}.</span>
+                    <span className="min-w-0 flex-1 break-words">{lesson.title}</span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="mt-0.5 size-4 shrink-0 text-gray-500 transition-transform group-open:rotate-180"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      aria-hidden
+                    >
+                      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </summary>
+                  <div className="space-y-3 px-5 pb-5 text-base leading-7 break-words text-gray-700">
+                    {lesson.body.map((p, j) => (
+                      <p key={j}>{p}</p>
+                    ))}
+                    {lesson.question ? (
+                      <p className="border-t border-gray-100 pt-3 text-[15px] text-gray-600">
+                        <span className="font-medium text-gray-800">{words.think}</span>{" "}
+                        {lesson.question}
+                      </p>
+                    ) : null}
+                  </div>
+                </details>
+              ))}
+            </div>
+          ) : null}
+          {chatSrc && preview ? (
+            <div
+              data-testid="chat-frame"
+              className={`${CHAT_FRAME} flex flex-col items-center justify-center gap-1 px-6 text-center`}
+            >
+              <span className="text-sm font-medium text-gray-700">{words.ask}</span>
+              <span className="text-xs text-gray-500">{words.askBody}</span>
+            </div>
+          ) : chatSrc ? (
+            <iframe
+              data-testid="chat-frame"
+              src={chatSrc}
+              title={words.ask}
+              loading="lazy"
+              className={CHAT_FRAME}
+            />
           ) : null}
           {page.heroImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -118,7 +188,16 @@ export function LandingPageView({
         </section>
 
         <section className="relative min-w-0 lg:sticky lg:top-8 lg:self-start">
-          <LandingForm page={page} org={org} accent={accent} preview={preview} />
+          {closed ? (
+            <p
+              data-testid="event-closed"
+              className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-600 shadow-sm"
+            >
+              {words.closed}
+            </p>
+          ) : (
+            <LandingForm page={page} org={org} accent={accent} preview={preview} tags={live} />
+          )}
         </section>
       </main>
 
@@ -137,6 +216,7 @@ export function LandingPageView({
             </>
           ) : null}
         </span>
+        {tagsLine ? <span>{tagsLine}</span> : null}
         <span>
           Powered by{" "}
           <a href="https://ibl.ai" className="font-medium underline-offset-2 hover:underline">
@@ -145,6 +225,36 @@ export function LandingPageView({
         </span>
       </footer>
     </div>
+  );
+}
+
+/** The institution's band across the top of every public page. */
+export function BrandHeader({ branding }: { branding: Branding }) {
+  const accent = branding.accentColor;
+  return (
+    <header
+      className="text-white"
+      style={{ background: `linear-gradient(135deg, ${accent} 0%, ${shade(accent, -0.25)} 100%)` }}
+    >
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3">
+          {branding.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logoUrl}
+              alt=""
+              className="h-8 w-auto max-w-[9rem] rounded bg-white/90 p-1"
+            />
+          ) : null}
+          <span className="truncate text-sm font-semibold tracking-wide uppercase opacity-95">
+            {branding.name}
+          </span>
+        </div>
+        <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-medium">
+          Admissions
+        </span>
+      </div>
+    </header>
   );
 }
 

@@ -184,3 +184,59 @@ export function demoLandingPage(term: string) {
     published: true,
   };
 }
+
+export const DEMO_TIME_ZONE = "America/New_York";
+
+/** The instant a wall-clock hour is, on a UTC calendar day, in `timeZone`. */
+function zoned(day: Date, hour: number, timeZone: string): Date {
+  const guess = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), hour);
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+  }).formatToParts(new Date(guess));
+  const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const shown = Date.UTC(part("year"), part("month") - 1, part("day"), part("hour"));
+  return new Date(guess - (shown - guess));
+}
+
+/**
+ * The published nursing open house, for `newLandingPage`: the first Saturday
+ * at least two weeks out, 10 a.m. to 1 p.m., sign-ups until the Tuesday before.
+ */
+export function demoOpenHouse(term: string, now = new Date()) {
+  const day = new Date(now.getTime() + 14 * 86_400_000);
+  while (day.getUTCDay() !== 6) day.setUTCDate(day.getUTCDate() + 1);
+  const startsAt = zoned(day, 10, DEMO_TIME_ZONE);
+  const tuesday = new Date(day.getTime() - 4 * 86_400_000);
+  return {
+    title: "Nursing open house",
+    slug: "nursing-open-house",
+    headline: "See where you will learn to be a nurse.",
+    subheadline: "Tour the Simulation Lab and meet nursing faculty and students.",
+    highlights: [
+      "Tour the Simulation Lab in Harper Hall",
+      "Meet nursing faculty and current students",
+      "Ask about direct admission and what comes next",
+    ],
+    ctaLabel: "Save my seat",
+    successTitle: "Your seat is saved",
+    successMessage: "We look forward to meeting you.",
+    program: "B.S. Nursing",
+    term,
+    pipelineCode: "admissions",
+    stageCode: "inquiry",
+    tags: ["Open house"],
+    published: true,
+    event: {
+      startsAt: startsAt.toISOString(),
+      endsAt: new Date(startsAt.getTime() + 3 * 3_600_000).toISOString(),
+      timeZone: DEMO_TIME_ZONE,
+      place: "Simulation Lab, Harper Hall",
+      signUpBy: new Date(zoned(tuesday, 23, DEMO_TIME_ZONE).getTime() + 59 * 60_000).toISOString(),
+    },
+  };
+}

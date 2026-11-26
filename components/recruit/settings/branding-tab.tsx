@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Palette, Save } from "lucide-react";
+import { Megaphone, Palette, Save } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
+import { isAdsLabel, isGoogleTagId, isMetaPixelId } from "@/lib/recruit/ad-tags";
+import type { RecruitSettings } from "@/lib/recruit/org-settings";
 
 const CARD =
   "rounded-xl border border-[var(--border-color,#e5e7eb)] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
@@ -57,108 +60,214 @@ export function BrandingTab() {
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-      <section className={CARD}>
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-          <Palette className="size-4 text-[#0058cc]" /> Landing-page branding
-        </h3>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Shown on every public page under <code className="font-mono">/p/…</code>. Falls back to
-          the organization&apos;s platform name and logo.
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="brand-name">Institution name</Label>
-            <Input
-              id="brand-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={branding.name}
-              className="h-9"
-            />
-          </div>
-          <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="brand-logo">Logo URL (https)</Label>
-            <Input
-              id="brand-logo"
-              value={logo}
-              onChange={(e) => setLogo(e.target.value)}
-              placeholder="https://www.example.edu/logo.svg"
-              className="h-9"
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="brand-accent">Accent color</Label>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                aria-label="Pick accent color"
-                value={/^#[0-9a-f]{6}$/i.test(accent) ? accent : "#0058cc"}
-                onChange={(e) => setAccent(e.target.value)}
-                className="size-9 cursor-pointer rounded-md border border-[var(--border-color,#e5e7eb)] bg-white p-1"
-              />
+    <>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <section className={CARD}>
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <Palette className="size-4 text-[#0058cc]" /> Landing-page branding
+          </h3>
+          <p className="text-muted-foreground mt-1 text-xs">
+            Shown on every public page under <code className="font-mono">/p/…</code>. Falls back to
+            the organization&apos;s platform name and logo.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label htmlFor="brand-name">Institution name</Label>
               <Input
-                id="brand-accent"
-                value={accent}
-                onChange={(e) => setAccent(e.target.value)}
-                className="h-9 font-mono text-sm"
+                id="brand-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={branding.name}
+                className="h-9"
+              />
+            </div>
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label htmlFor="brand-logo">Logo URL (https)</Label>
+              <Input
+                id="brand-logo"
+                value={logo}
+                onChange={(e) => setLogo(e.target.value)}
+                placeholder="https://www.example.edu/logo.svg"
+                className="h-9"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="brand-accent">Accent color</Label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  aria-label="Pick accent color"
+                  value={/^#[0-9a-f]{6}$/i.test(accent) ? accent : "#0058cc"}
+                  onChange={(e) => setAccent(e.target.value)}
+                  className="size-9 cursor-pointer rounded-md border border-[var(--border-color,#e5e7eb)] bg-white p-1"
+                />
+                <Input
+                  id="brand-accent"
+                  value={accent}
+                  onChange={(e) => setAccent(e.target.value)}
+                  className="h-9 font-mono text-sm"
+                />
+              </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="brand-email">Admissions contact email</Label>
+              <Input
+                id="brand-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admissions@example.edu"
+                className="h-9"
               />
             </div>
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="brand-email">Admissions contact email</Label>
-            <Input
-              id="brand-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="admissions@example.edu"
-              className="h-9"
-            />
+          <div className="mt-4">
+            <Button
+              className="ibl-button-primary"
+              size="sm"
+              disabled={isSaving}
+              onClick={() => void save()}
+            >
+              {isSaving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}{" "}
+              Save branding
+            </Button>
           </div>
-        </div>
-        <div className="mt-4">
-          <Button
-            className="ibl-button-primary"
-            size="sm"
-            disabled={isSaving}
-            onClick={() => void save()}
-          >
-            {isSaving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}{" "}
-            Save branding
-          </Button>
-        </div>
-      </section>
-      <section className={`${CARD} overflow-hidden p-0`}>
-        <div
-          className="px-4 py-3 text-white"
-          style={{
-            background: `linear-gradient(135deg, ${/^#[0-9a-f]{6}$/i.test(accent) ? accent : "#0058cc"}, #0b1f3a)`,
-          }}
-        >
-          <div className="flex items-center gap-2">
-            {logo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={logo} alt="" className="h-6 w-auto rounded bg-white/90 p-0.5" />
-            ) : null}
-            <span className="text-xs font-semibold tracking-wide uppercase">
-              {name || branding.name}
-            </span>
-          </div>
-          <p className="mt-6 text-lg font-bold">Find your place here.</p>
-        </div>
-        <div className="p-4">
-          <div className="h-2 w-3/4 rounded bg-gray-200" />
-          <div className="mt-2 h-2 w-1/2 rounded bg-gray-100" />
+        </section>
+        <section className={`${CARD} overflow-hidden p-0`}>
           <div
-            className="mt-4 h-8 rounded-lg"
-            style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(accent) ? accent : "#0058cc" }}
-          />
-          <p className="text-muted-foreground mt-3 text-[11px]">
-            Preview of the hero and button on a landing page.
-          </p>
-        </div>
-      </section>
-    </div>
+            className="px-4 py-3 text-white"
+            style={{
+              background: `linear-gradient(135deg, ${/^#[0-9a-f]{6}$/i.test(accent) ? accent : "#0058cc"}, #0b1f3a)`,
+            }}
+          >
+            <div className="flex items-center gap-2">
+              {logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logo} alt="" className="h-6 w-auto rounded bg-white/90 p-0.5" />
+              ) : null}
+              <span className="text-xs font-semibold tracking-wide uppercase">
+                {name || branding.name}
+              </span>
+            </div>
+            <p className="mt-6 text-lg font-bold">Find your place here.</p>
+          </div>
+          <div className="p-4">
+            <div className="h-2 w-3/4 rounded bg-gray-200" />
+            <div className="mt-2 h-2 w-1/2 rounded bg-gray-100" />
+            <div
+              className="mt-4 h-8 rounded-lg"
+              style={{ backgroundColor: /^#[0-9a-f]{6}$/i.test(accent) ? accent : "#0058cc" }}
+            />
+            <p className="text-muted-foreground mt-3 text-[11px]">
+              Preview of the hero and button on a landing page.
+            </p>
+          </div>
+        </section>
+      </div>
+      <AdTagsCard />
+    </>
+  );
+}
+
+const AD_FIELDS = [
+  {
+    key: "googleTagId",
+    label: "googleTag",
+    hint: "googleTagHint",
+    valid: isGoogleTagId,
+    placeholder: "G-XXXXXXXXXX",
+  },
+  {
+    key: "googleAdsLabel",
+    label: "adsLabel",
+    hint: "adsLabelHint",
+    valid: isAdsLabel,
+    placeholder: "",
+  },
+  {
+    key: "metaPixelId",
+    label: "metaPixel",
+    hint: "metaPixelHint",
+    valid: isMetaPixelId,
+    placeholder: "",
+  },
+] as const;
+
+type AdKey = (typeof AD_FIELDS)[number]["key"];
+
+/** The Google tag and Meta Pixel every landing page loads. */
+function AdTagsCard() {
+  const t = useTranslations("recruit.ads");
+  const { settings, update, isSaving, isLoading } = useRecruitSettings();
+  const [values, setValues] = useState<Record<AdKey, string>>({
+    googleTagId: "",
+    googleAdsLabel: "",
+    metaPixelId: "",
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+    setValues({
+      googleTagId: settings.googleTagId ?? "",
+      googleAdsLabel: settings.googleAdsLabel ?? "",
+      metaPixelId: settings.metaPixelId ?? "",
+    });
+  }, [isLoading, settings.googleTagId, settings.googleAdsLabel, settings.metaPixelId]);
+
+  const bad = (f: (typeof AD_FIELDS)[number]) =>
+    !!values[f.key].trim() && !f.valid(values[f.key].trim());
+
+  const save = async () => {
+    const patch: Partial<RecruitSettings> = {};
+    const remove: string[] = [];
+    for (const f of AD_FIELDS) {
+      const v = values[f.key].trim();
+      if (v) patch[f.key] = v;
+      else remove.push(f.key);
+    }
+    try {
+      await update(patch, remove);
+      toast.success(t("saved"));
+    } catch {
+      toast.error(t("failed"));
+    }
+  };
+
+  return (
+    <section className={`${CARD} mt-4`}>
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+        <Megaphone className="size-4 text-[#0058cc]" /> {t("title")}
+      </h3>
+      <p className="text-muted-foreground mt-1 text-xs">{t("body")}</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {AD_FIELDS.map((f) => (
+          <div key={f.key} className="grid content-start gap-1.5">
+            <Label htmlFor={`ads-${f.key}`}>{t(f.label)}</Label>
+            <Input
+              id={`ads-${f.key}`}
+              value={values[f.key]}
+              onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
+              placeholder={f.placeholder}
+              aria-invalid={bad(f)}
+              className="h-9 font-mono text-sm"
+            />
+            <p className={`text-xs ${bad(f) ? "text-destructive" : "text-muted-foreground"}`}>
+              {bad(f) ? t("invalid") : t(f.hint)}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4">
+        <Button
+          className="ibl-button-primary"
+          size="sm"
+          disabled={isSaving || AD_FIELDS.some(bad)}
+          onClick={() => void save()}
+        >
+          {isSaving ? <Spinner data-icon="inline-start" /> : <Save data-icon="inline-start" />}{" "}
+          {t("save")}
+        </Button>
+      </div>
+    </section>
   );
 }

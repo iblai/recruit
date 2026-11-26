@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Globe } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,13 +18,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import { SimpleSelect } from "@/components/crm/simple-select";
 import { useDealLookups, openStages } from "@/components/crm/deals/use-lookups";
 import { useSession } from "@/hooks/use-session";
 import { entryTerms } from "@/lib/recruit/fields";
 import { errorMessage } from "@/lib/crm/api";
-import { newLandingPage, slugify, SLUG_RE } from "@/lib/recruit/landing-pages";
+import { adminFetch } from "@/lib/recruit/admin-client";
+import { BRIEF_MAX } from "@/lib/recruit/draft-page";
+import { newLandingPage, slugify, SLUG_RE, type LandingPage } from "@/lib/recruit/landing-pages";
 import { useLandingPages } from "@/lib/recruit/use-landing-pages";
+import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
 
 /** Create a landing page with the standard inquiry form; refine it in the editor. */
 export function LandingPageDialog({
@@ -34,7 +39,9 @@ export function LandingPageDialog({
   onOpenChange: (o: boolean) => void;
 }) {
   const router = useRouter();
-  const { href } = useSession();
+  const { href, tenantKey } = useSession();
+  const t = useTranslations("recruit.pages");
+  const { settings } = useRecruitSettings();
   const titleRef = useRef<HTMLInputElement>(null);
   const { pages, loaded, create, isSaving } = useLandingPages();
   const lookups = useDealLookups({ skip: !open });
@@ -46,9 +53,14 @@ export function LandingPageDialog({
   const [term, setTerm] = useState("");
   const [pipelineCode, setPipelineCode] = useState("");
   const [stageCode, setStageCode] = useState("");
+  const [brief, setBrief] = useState("");
+  const [drafting, setDrafting] = useState(false);
+  const [kind, setKind] = useState<"page" | "course">("page");
 
   useEffect(() => {
     if (!open) return;
+    setBrief("");
+    setKind("page");
     setTitle("");
     setSlug("");
     setSlugTouched(false);
@@ -88,6 +100,31 @@ export function LandingPageDialog({
     }
   };
 
+  /** Recruit writes the page from the university's sources; it lands as a draft to review. */
+  const draft = async () => {
+    setDrafting(true);
+    try {
+      const { page } = await adminFetch<{ page: LandingPage }>("/api/admin/pages/draft", {
+        method: "POST",
+        json: {
+          org: tenantKey,
+          brief,
+          ...(kind === "course" && { kind, program: program.trim() }),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+      });
+      let slug = page.slug;
+      for (let n = 2; pages.some((p) => p.slug === slug); n++) slug = `${page.slug}-${n}`;
+      await create({ ...page, slug, pipelineCode, sourceCode: `landing-${slug}`.slice(0, 64) });
+      onOpenChange(false);
+      router.push(href(`/landing-pages/${encodeURIComponent(slug)}`));
+    } catch (e) {
+      toast.error(t("draftFailed", { reason: e instanceof Error ? e.message : "" }));
+    } finally {
+      setDrafting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg" initialFocus={titleRef}>
@@ -110,6 +147,57 @@ export function LandingPageDialog({
             void submit();
           }}
         >
+          {settings.studentAgentId ? (
+            <div className="grid gap-1.5 border-b border-gray-100 pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor="lp-brief">{t("brief")}</Label>
+                <div className="flex gap-3 text-xs text-gray-600">
+                  {(["page", "course"] as const).map((k) => (
+                    <label key={k} className="flex items-center gap-1.5">
+                      <input
+                        type="radio"
+                        name="lp-kind"
+                        checked={kind === k}
+                        onChange={() => setKind(k)}
+                      />
+                      {t(k === "page" ? "kindPage" : "kindCourse")}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <Textarea
+                id="lp-brief"
+                rows={3}
+                maxLength={BRIEF_MAX}
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder={t(kind === "page" ? "briefPlaceholder" : "courseBriefPlaceholder")}
+              />
+              <p className="text-muted-foreground text-[11px]">
+                {t(
+                  kind === "page"
+                    ? "briefHint"
+                    : program.trim()
+                      ? "courseHint"
+                      : "courseNeedsProgram",
+                )}
+              </p>
+              <div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    (kind === "page" ? !brief.trim() : !program.trim()) || drafting || !loaded
+                  }
+                  onClick={draft}
+                >
+                  {drafting ? <Spinner data-icon="inline-start" /> : null}
+                  {drafting ? t("drafting") : t(kind === "page" ? "draft" : "draftCourse")}
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <div className="grid gap-1.5">
             <Label htmlFor="lp-title">
               Title <span className="text-destructive">*</span>
@@ -149,7 +237,11 @@ export function LandingPageDialog({
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
-              <Label htmlFor="lp-program">Program (optional)</Label>
+              <Label htmlFor="lp-program">
+                {kind === "course" && settings.studentAgentId
+                  ? t("courseProgram")
+                  : "Program (optional)"}
+              </Label>
               <Input
                 id="lp-program"
                 value={program}

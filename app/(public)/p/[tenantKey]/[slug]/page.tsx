@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { LandingPageView } from "@/components/landing/landing-page-view";
+import { demoOpenHouse } from "@/lib/recruit/demo-data";
 import { fromPublicWebForm, newLandingPage, type LandingPage } from "@/lib/recruit/landing-pages";
-import { institutionBranding } from "@/lib/recruit/org-settings";
+import { pickLocale } from "@/lib/recruit/locale";
+import { adTags } from "@/lib/recruit/ad-tags";
+import { institutionBranding, readRecruitSettings } from "@/lib/recruit/org-settings";
 import { readOrgMetadata, readPublicWebForm } from "@/lib/recruit/settings-server";
 
 /**
@@ -28,13 +32,22 @@ async function load(params: Params) {
         accentColor: "#0058cc",
         contactEmail: "admissions@northfield.edu",
       },
+      chatSrc:
+        slug === "open-house" || slug === "taster-course"
+          ? `/chat/${org}?page=${slug}&frame=page`
+          : undefined,
     };
   }
   const [form, metadata] = await Promise.all([readPublicWebForm(org, slug), readOrgMetadata(org)]);
+  const settings = readRecruitSettings(metadata);
   return {
     org,
     page: form ? fromPublicWebForm(form) : undefined,
     branding: institutionBranding(metadata, org),
+    tags: adTags(settings),
+    chatSrc: settings.studentAgentId
+      ? `/chat/${encodeURIComponent(org)}?page=${encodeURIComponent(slug)}&frame=page`
+      : undefined,
   };
 }
 
@@ -53,7 +66,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 }
 
 export default async function PublicLandingPage({ params }: { params: Params }) {
-  const { org, page, branding } = await load(params);
+  const { org, page, branding, chatSrc, tags } = await load(params);
   if (!page) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#f7f8fa] px-6">
@@ -67,10 +80,52 @@ export default async function PublicLandingPage({ params }: { params: Params }) 
       </main>
     );
   }
-  return <LandingPageView page={page} org={org} branding={branding} />;
+  const locale = pickLocale((await headers()).get("accept-language"));
+  return (
+    <LandingPageView
+      page={page}
+      org={org}
+      branding={branding}
+      locale={locale}
+      chatSrc={chatSrc}
+      tags={tags}
+    />
+  );
 }
 
 function samplePage(slug: string): LandingPage {
+  // `/p/__sample__/open-house` is the event layout.
+  if (slug === "open-house") return newLandingPage({ ...demoOpenHouse("Fall 2027"), slug });
+  // `/p/__sample__/taster-course` is the course layout, from `demo/catalog/nursing.md`.
+  if (slug === "taster-course")
+    return newLandingPage({
+      slug,
+      title: "B.S. Nursing taster course",
+      headline: "Try a little of nursing at Northfield.",
+      subheadline: "Two short lessons from the program, then ask anything about it.",
+      program: "B.S. Nursing",
+      term: "Fall 2027",
+      published: true,
+      course: {
+        lessons: [
+          {
+            title: "How you join the program",
+            body: [
+              "The B.S. Nursing program is direct admit: a first-year applicant admitted as a nursing major starts in the program in the first semester.",
+              "There is no second application to the program after the first year.",
+            ],
+            question: "Would you start as a first-year student, or transfer in?",
+          },
+          {
+            title: "The Simulation Lab",
+            body: [
+              "The Simulation Lab, in Harper Hall, has six patient rooms with high-fidelity manikins.",
+              "Nursing students use it from their first semester.",
+            ],
+          },
+        ],
+      },
+    });
   return newLandingPage({
     slug,
     title: "Request information",

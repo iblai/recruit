@@ -3,6 +3,8 @@ import config from "@/lib/iblai/config";
 import { CrmServer } from "@/lib/recruit/crm-server";
 import { bearerToken } from "@/lib/mcp/protocol";
 import { createRecruitServer, type ToolContext } from "@/lib/mcp/tools";
+import { institutionBranding, readRecruitSettings } from "@/lib/recruit/org-settings";
+import { readOrgMetadata } from "@/lib/recruit/settings-server";
 
 /**
  * The Chief of Staff's tool server — an MCP endpoint (Streamable HTTP, JSON
@@ -19,15 +21,21 @@ export const dynamic = "force-dynamic";
 
 const server = createRecruitServer();
 
-function context(org: string, authorization: string): ToolContext {
-  return { org, crm: new CrmServer(org, authorization), appUrl: config.publicOrigin() };
+async function context(org: string, authorization: string): Promise<ToolContext> {
+  const metadata = org ? await readOrgMetadata(org) : {};
+  // The name a recipient reads: the university's own, else the platform's.
+  const settings = {
+    ...readRecruitSettings(metadata),
+    institutionName: institutionBranding(metadata, org).name,
+  };
+  return { org, crm: new CrmServer(org, authorization), appUrl: config.publicOrigin(), settings };
 }
 
 async function handle(req: NextRequest, params: Promise<{ tenantKey: string }>) {
   const { tenantKey } = await params;
   const org = decodeURIComponent(tenantKey ?? "");
   const key = bearerToken(req);
-  return server.handleHttp(req, context(org, `Api-Token ${key}`), () => !!key && !!org);
+  return server.handleHttp(req, await context(org, `Api-Token ${key}`), () => !!key && !!org);
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ tenantKey: string }> }) {

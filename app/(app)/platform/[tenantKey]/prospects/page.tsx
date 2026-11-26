@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -28,6 +29,7 @@ const PAGE_SIZE = 50;
  */
 export default function PeoplePage() {
   const router = useRouter();
+  const t = useTranslations("recruit.found");
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -35,6 +37,7 @@ export default function PeoplePage() {
   const [lifecycle, setLifecycle] = useState("");
   const [owner, setOwner] = useState<number | null>(null);
   const [tag, setTag] = useState("");
+  const [origin, setOrigin] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
 
   // `?new=1` (sidebar / command palette / deep link) opens the create dialog.
@@ -53,11 +56,11 @@ export default function PeoplePage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const hasServerFilter = Boolean(debounced || lifecycle || owner || tag);
+  const hasServerFilter = Boolean(debounced || lifecycle || owner || tag || origin);
 
   useEffect(() => {
     setPage(1);
-  }, [debounced, lifecycle, owner, tag]);
+  }, [debounced, lifecycle, owner, tag, origin]);
 
   const { data, isLoading, isFetching } = useListPersonsQuery({
     page,
@@ -66,6 +69,7 @@ export default function PeoplePage() {
     lifecycle_stage: (lifecycle || undefined) as LifecycleStage | undefined,
     owner: owner ?? undefined,
     tags: tag || undefined,
+    metadata__has_key: origin || undefined,
   });
 
   const { data: tags } = useListTagsQuery();
@@ -77,6 +81,7 @@ export default function PeoplePage() {
     setLifecycle("");
     setOwner(null);
     setTag("");
+    setOrigin("");
   };
 
   const showEmptyState = !isLoading && rows.length === 0;
@@ -149,6 +154,17 @@ export default function PeoplePage() {
               size="sm"
               className="w-40"
               aria-label="Filter by tag"
+            />
+            <SimpleSelect
+              value={origin}
+              onChange={setOrigin}
+              options={[{ value: "found", label: t("foundByAgent") }]}
+              allowEmpty
+              emptyLabel={t("anyOrigin")}
+              placeholder={t("anyOrigin")}
+              size="sm"
+              className="w-44"
+              aria-label={t("filterOrigin")}
             />
             {search || hasServerFilter ? (
               <Button variant="ghost" size="sm" onClick={clearFilters}>

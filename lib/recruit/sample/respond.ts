@@ -69,6 +69,11 @@ function filter(rows: Row[], params: Params, spec: Spec): Row[] {
       if (gte && (!value || value.slice(0, gte.length) < gte)) return false;
       if (lte && (!value || value.slice(0, lte.length) > lte)) return false;
     }
+    if (
+      has(params, "metadata__has_key") &&
+      !(str(params?.metadata__has_key) in ((row.metadata as Row | undefined) ?? {}))
+    )
+      return false;
     if (has(params, "tags")) {
       const wanted = str(params?.tags).split(",");
       const chips = (row.tags as { id: number; name: string }[] | undefined) ?? [];

@@ -5,11 +5,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
+import { useTranslations } from "next-intl";
 import {
+  Bot,
   CalendarCheck2,
   ChartColumn,
   ClipboardList,
+  Gauge,
   Globe,
+  Inbox,
+  MessagesSquare,
   School,
   Search,
   Settings,
@@ -38,11 +43,14 @@ import { useSession } from "@/hooks/use-session";
 import config from "@/lib/iblai/config";
 import { isTrialUser } from "@/lib/iblai/house-journeys";
 import { tenantDisplayName } from "@/lib/iblai/tenant";
+import { useNeedsYou } from "@/lib/recruit/use-needs-you";
 import type { IblaiRootState } from "@/store/iblai-store";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
   label: string;
+  /** A row named in the message catalogue (`recruit.nav`); `label` is its English. */
+  key?: "needsYou" | "conversations" | "recruit" | "scoreboard";
   path: string;
   icon: LucideIcon;
   exact?: boolean;
@@ -58,6 +66,16 @@ const WORKSPACE: NavItem[] = [
   { label: "Activities", path: "/activities", icon: CalendarCheck2 },
   { label: "Pages", path: "/landing-pages", icon: Globe },
   { label: "Tags", path: "/tags", icon: Tag },
+  { label: "Needs you", key: "needsYou", path: "/needs-you", icon: Inbox },
+  {
+    label: "Conversations",
+    key: "conversations",
+    path: "/conversations",
+    icon: MessagesSquare,
+    adminOnly: true,
+  },
+  { label: "Scoreboard", key: "scoreboard", path: "/scoreboard", icon: Gauge, adminOnly: true },
+  { label: "Recruit", key: "recruit", path: "/recruit", icon: Bot, adminOnly: true },
   { label: "Settings", path: "/settings", icon: Settings, adminOnly: true },
 ];
 
@@ -237,7 +255,13 @@ function RecruitNav({
     if (item.exact) return pathname === target || pathname === `${target}/`;
     return pathname === target || pathname.startsWith(`${target}/`);
   };
-  const items = WORKSPACE.filter((i) => !i.adminOnly || adminMode);
+  const t = useTranslations("recruit.nav");
+  const waiting = useNeedsYou().count;
+  const items = WORKSPACE.filter((i) => !i.adminOnly || adminMode).map((i) => ({
+    ...i,
+    label: i.key ? t(i.key) : i.label,
+    count: i.key === "needsYou" ? waiting : 0,
+  }));
 
   if (ctx.collapsed) {
     return (
@@ -314,6 +338,14 @@ function RecruitNav({
                   style={{ color: active ? "#0058cc" : PLATFORM_SIDEBAR_NAV_MUTED }}
                 />
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.count ? (
+                  <span
+                    data-testid="needs-you-count"
+                    className="text-xs text-[#7d7e82] tabular-nums"
+                  >
+                    {item.count}
+                  </span>
+                ) : null}
               </Link>
             </li>
           );

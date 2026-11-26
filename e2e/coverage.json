@@ -204,6 +204,102 @@
       "journey": "house",
       "name": "Upgrade Plan asks for a pricing page that returns through the sign-in app",
       "spec": "journeys/house.journey.spec.ts"
+    },
+    {
+      "id": "P1",
+      "journey": "agent",
+      "name": "an event page shows its date and place in the visitor's language, with the chat on it",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "P2",
+      "journey": "agent",
+      "name": "an organization without Recruit gets the neutral chat page",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "P3",
+      "journey": "agent",
+      "name": "a page on an organization without Recruit carries no chat",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "P4",
+      "journey": "agent",
+      "name": "a taster course opens its first lesson, with the chat and the form on one edge at phone width",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R1",
+      "journey": "agent",
+      "name": "the sidebar reaches Needs you, and in Admin mode Conversations, Scoreboard and Recruit",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R2",
+      "journey": "agent",
+      "name": "outside Admin mode Recruit's admin rows are gone, and /recruit goes home",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R3",
+      "journey": "agent",
+      "name": "an admin makes a landing page an event, publishes it, and a visitor sees the date",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R4",
+      "journey": "agent",
+      "name": "a handoff waits under Needs you, counted in the sidebar, until it is marked done",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R5",
+      "journey": "agent",
+      "name": "a queued message opens for review, links to the person's own mail, and Mark sent clears it",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R6",
+      "journey": "agent",
+      "name": "the public chat says it is an AI agent before anything is typed",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R7",
+      "journey": "agent",
+      "name": "Settings → Schedule offers the daily outreach run above the platform's task list",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R8",
+      "journey": "agent",
+      "name": "Settings → Connectors names the mail for approved messages above the platform's connectors",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R9",
+      "journey": "agent",
+      "name": "Settings → Branding refuses an ad tag that is not an ID",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R10",
+      "journey": "agent",
+      "name": "a shortlist under Needs you keeps the student a reviewer ticks, tags them, files them in the CRM app, and keeps only the other's handle",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R11",
+      "journey": "agent",
+      "name": "Do not contact on a kept student reaches their copy in the CRM app, and turning it off here leaves it there",
+      "spec": "journeys/agent.journey.spec.ts"
+    },
+    {
+      "id": "R12",
+      "journey": "agent",
+      "name": "a saved search is listed as the Chief of Staff's own task until it is deleted",
+      "spec": "journeys/agent.journey.spec.ts"
     }
   ]
 }

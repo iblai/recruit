@@ -8,6 +8,7 @@
  */
 import { platformFetch, PlatformError } from "../iblai/platform";
 import { SCOPE_MISSING, confirmScope, isOwnRecords, scopeConfirmed, withApp } from "../crm/app";
+import { syncCrmCopy } from "./crm-app";
 import type {
   Activity,
   ActivityInput,
@@ -30,6 +31,7 @@ import type {
   Tag,
   WebForm,
   WebFormInput,
+  WebFormSubmission,
 } from "../crm/types";
 
 function qs(params?: object): string {
@@ -81,6 +83,9 @@ export class CrmServer {
   // ---------------------------------------------------------------- persons
   listPersons(params?: PersonListParams) {
     return this.get<Paginated<Person>>(`/persons/${qs(params)}`);
+  }
+  allPersons(params?: Omit<PersonListParams, "page" | "page_size">, maxPages = 5) {
+    return this.all<Person>("/persons/", params ?? {}, maxPages);
   }
   getPerson(id: string) {
     return this.get<Person>(`/persons/${encodeURIComponent(id)}/`);
@@ -214,8 +219,14 @@ export class CrmServer {
   allActivities(params?: Omit<ActivityListParams, "page" | "page_size">, maxPages = 5) {
     return this.all<Activity>("/activities/", params ?? {}, maxPages);
   }
+  getActivity(id: number) {
+    return this.get<Activity>(`/activities/${id}/`);
+  }
   createActivity(body: ActivityInput) {
     return this.send<Activity>("POST", "/activities/", body);
+  }
+  updateActivity(id: number, body: ActivityInput) {
+    return this.send<Activity>("PATCH", `/activities/${id}/`, body);
   }
   markActivityDone(id: number) {
     return this.send<Activity>("POST", `/activities/${id}/done/`, {});
@@ -234,12 +245,27 @@ export class CrmServer {
     if (hit) return hit;
     return this.send<Tag>("POST", "/tags/", { name: clean, color });
   }
+  /** The CRM app's copy of a student kept from a social channel, with this client's credential (`./crm-app`). */
+  syncCrmCopy(person: Person, kept = false) {
+    return syncCrmCopy(this.authorization, person, kept);
+  }
   /** Attach a tag; an existing assignment (409) is success. */
   async attachTag(host: "persons" | "organizations" | "deals", id: string | number, tagId: number) {
     try {
       await this.send("POST", `/${host}/${id}/tags/`, { tag_id: tagId });
     } catch (e) {
       if (!(e instanceof PlatformError && e.status === 409)) throw e;
+    }
+  }
+
+  /** Whether this credential reaches the CRM at all: the gate before any tool runs. */
+  async reachable(): Promise<boolean> {
+    try {
+      await this.get("/pipelines/?page_size=1");
+      return true;
+    } catch (e) {
+      if (e instanceof PlatformError && (e.status === 401 || e.status === 403)) return false;
+      throw e;
     }
   }
 
@@ -255,6 +281,14 @@ export class CrmServer {
   }
   createWebForm(body: WebFormInput) {
     return this.send<WebForm>("POST", "/web-forms/", body);
+  }
+  // ponytail: the first 500 sign-ups of a page; page further when an event draws more.
+  allWebFormSubmissions(slug: string) {
+    return this.all<WebFormSubmission>(
+      `/web-forms/${encodeURIComponent(slug)}/submissions/`,
+      {},
+      5,
+    );
   }
   async countWebFormSubmissions(slug: string): Promise<number> {
     const data = await this.get<Paginated<unknown>>(

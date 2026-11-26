@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { ArrowLeft, Code2, Copy, ExternalLink, Eye, Globe, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,11 +24,18 @@ import { useBreadcrumbs } from "@/components/crm/breadcrumbs";
 import { openStages, useDealLookups } from "@/components/crm/deals/use-lookups";
 import { LandingPageView } from "@/components/landing/landing-page-view";
 import { FieldsEditor } from "@/components/recruit/landing-pages/fields-editor";
+import { LessonsEditor } from "@/components/recruit/landing-pages/lessons-editor";
 import { useSession } from "@/hooks/use-session";
 import { errorMessage, errorStatus, useListWebFormSubmissionsQuery } from "@/lib/crm/api";
 import config from "@/lib/iblai/config";
 import { entryTerms } from "@/lib/recruit/fields";
-import { landingPageUrl, validateLandingPage, type LandingPage } from "@/lib/recruit/landing-pages";
+import {
+  fromLocalInput,
+  landingPageUrl,
+  toLocalInput,
+  validateLandingPage,
+  type LandingPage,
+} from "@/lib/recruit/landing-pages";
 import { useLandingPage, useLandingPages } from "@/lib/recruit/use-landing-pages";
 import { useRecruitSettings } from "@/lib/recruit/use-recruit-settings";
 import { LIFECYCLE_LABELS } from "@/lib/recruit/vocabulary";
@@ -36,6 +44,16 @@ const CARD =
   "rounded-xl border border-[var(--border-color,#e5e7eb)] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]";
 const label = "flex items-center gap-1";
 
+const EVENT_LABELS = { startsAt: "starts", endsAt: "ends", signUpBy: "signUpBy" } as const;
+
+// ponytail: an event is in its editor's time zone; a picker when a university runs events elsewhere.
+const zone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+/** Ten in the morning, a week from today. */
+const nextWeek = () => {
+  const d = new Date(Date.now() + 7 * 86_400_000);
+  d.setHours(10, 0, 0, 0);
+  return d.toISOString();
+};
 const lines = (v: string[] | undefined) => (v ?? []).join("\n");
 const unlines = (v: string) =>
   v
@@ -53,9 +71,10 @@ export default function LandingPageEditorPage() {
   const slug = params?.slug ? decodeURIComponent(params.slug) : "";
   const router = useRouter();
   const { tenantKey, href, isAdmin } = useSession();
-  const { branding } = useRecruitSettings();
+  const { branding, settings } = useRecruitSettings();
   const { page: stored, isLoading, error } = useLandingPage(slug);
   const { save: saveForm, isSaving } = useLandingPages();
+  const t = useTranslations("recruit.pages");
   const { data: submissions } = useListWebFormSubmissionsQuery(
     { slug, page_size: 1 },
     { skip: !slug },
@@ -342,6 +361,72 @@ export default function LandingPageEditorPage() {
                   </div>
                 </div>
               </section>
+              <section className={`${CARD} mt-3 grid gap-3`}>
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="lp-event" className={label}>
+                    {t("event")} <InfoTip label={t("eventAbout")}>{t("eventHint")}</InfoTip>
+                  </Label>
+                  <Switch
+                    id="lp-event"
+                    checked={!!draft.event}
+                    onCheckedChange={(on: boolean) =>
+                      patch({ event: on ? { startsAt: nextWeek(), timeZone: zone() } : undefined })
+                    }
+                  />
+                </div>
+                {draft.event ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {(["startsAt", "endsAt", "signUpBy"] as const).map((key) => (
+                      <div key={key} className="grid gap-1.5">
+                        <Label htmlFor={`lp-event-${key}`} className={label}>
+                          {t(EVENT_LABELS[key])}
+                        </Label>
+                        <Input
+                          id={`lp-event-${key}`}
+                          type="datetime-local"
+                          value={toLocalInput(draft.event?.[key])}
+                          onChange={(e) =>
+                            patch({
+                              event: {
+                                ...draft.event!,
+                                // A cleared start stays in the draft as "", which validation names.
+                                [key]:
+                                  fromLocalInput(e.target.value) ??
+                                  (key === "startsAt" ? "" : undefined),
+                                timeZone: zone(),
+                              },
+                            })
+                          }
+                          className="h-9"
+                        />
+                      </div>
+                    ))}
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="lp-event-place" className={label}>
+                        {t("place")}
+                      </Label>
+                      <Input
+                        id="lp-event-place"
+                        value={draft.event.place ?? ""}
+                        onChange={(e) =>
+                          patch({ event: { ...draft.event!, place: e.target.value } })
+                        }
+                        className="h-9"
+                      />
+                    </div>
+                    <p className="text-muted-foreground text-[11px] sm:col-span-2">
+                      {t("zone", { zone: draft.event.timeZone })}
+                    </p>
+                  </div>
+                ) : null}
+              </section>
+              <section className={`${CARD} mt-3`}>
+                <LessonsEditor
+                  course={draft.course}
+                  onChange={(course) => patch({ course })}
+                  version={stored.updatedAt}
+                />
+              </section>
             </TabsContent>
 
             <TabsContent value="form">
@@ -547,7 +632,13 @@ export default function LandingPageEditorPage() {
           </div>
           <div className="overflow-hidden rounded-xl border border-[var(--border-color,#e5e7eb)] shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
             <div className="origin-top-left" style={{ zoom: 0.62 }}>
-              <LandingPageView page={draft} org={tenantKey} branding={branding} preview />
+              <LandingPageView
+                page={draft}
+                org={tenantKey}
+                branding={branding}
+                preview
+                chatSrc={settings.studentAgentId ? `/chat/${tenantKey}` : undefined}
+              />
             </div>
           </div>
         </div>
